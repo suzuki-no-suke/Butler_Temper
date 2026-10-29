@@ -10,7 +10,7 @@ Agent 一覧
 - 二層の秘密開示（secret-keeper） : メインとサブの二層。直近の会話と要約（メモリ）で会話し、条件を満たすとサブが秘密を開示する
 - シンプル会話（claude-simple-fable / -opus / -sonnet / -haiku） : システムプロンプトだけを設定して会話する
 - 各 Agent の設定の項目と既定値は、コード（apps/backend/src/bt_backend/agents）が原本。BOT 設定画面で確認できる
-  - (※ 現状、モデル ID は日付の付かない ID を使っている。日付付きの ID があるかは確かめていない)
+- モデル ID は日付の付かない ID を使う。4.6 世代以降は日付の無い ID 自体が固定のスナップショットで、日付付きの ID は無い（docs/knowhows/AnthropicのモデルID.md）
 
 
 # 作業手順
