@@ -7,6 +7,7 @@ LLM の呼び出しに関わるソースはすべてこのフォルダに置く�
 呼び出す側は、このファイルが公開するものだけを使う。
 """
 
+from bt_backend.agents.assist.settings_chat import ChatLine, SettingsProposal, propose_settings
 from bt_backend.agents.runner import (
     InvalidSettings,
     UnknownAgent,
@@ -19,12 +20,15 @@ from bt_backend.agents.types import AgentInfo, ChatTurn, TurnOutcome
 
 __all__ = [
     "AgentInfo",
+    "ChatLine",
     "ChatTurn",
     "InvalidSettings",
+    "SettingsProposal",
     "TurnOutcome",
     "UnknownAgent",
     "get_agent_info",
     "list_agents",
+    "propose_settings",
     "run_turn",
     "validate_settings",
 ]

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router'
 import { api, type BotDetail } from '../api'
 import AgentInfo from '../components/AgentInfo'
+import SettingsChat from '../components/SettingsChat'
 import { formatSettings, parseSettings } from '../settingsJson'
 import type { BotsContext } from './BotsLayout'
 
@@ -129,6 +130,16 @@ export default function BotDetailPage() {
               </button>
             </div>
           </div>
+          <SettingsChat
+            key={bot.id}
+            botId={bot.id}
+            currentSettings={draft}
+            onProposal={(settings) => {
+              setDraft(formatSettings(settings))
+              setError(null)
+              setMessage('設定変更チャットの案を編集中の設定に反映しました（まだ保存していません）')
+            }}
+          />
         </section>
 
         <section>

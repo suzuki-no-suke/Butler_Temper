@@ -407,3 +407,96 @@ pre.error {
 .stopped p {
   margin: 0;
 }
+
+.rating-picker {
+  display: flex;
+  gap: 6px;
+}
+
+button.rating {
+  background: none;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 2px 12px;
+  font-size: 0.85em;
+}
+
+button.rating.selected.rating-good,
+.rating-badge.rating-good {
+  background: #2e7d4f;
+  border-color: #2e7d4f;
+  color: #fff;
+}
+
+button.rating.selected.rating-fine,
+.rating-badge.rating-fine {
+  background: #8a6d1f;
+  border-color: #8a6d1f;
+  color: #fff;
+}
+
+button.rating.selected.rating-bad,
+.rating-badge.rating-bad {
+  background: #b42318;
+  border-color: #b42318;
+  color: #fff;
+}
+
+.rating-badge {
+  font-size: 0.75em;
+  border-radius: 10px;
+  padding: 1px 8px;
+  margin-right: 6px;
+}
+
+.message-comment {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.9em;
+}
+
+.message-comment.editing {
+  flex-direction: column;
+  align-items: stretch;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.comment-text {
+  white-space: pre-wrap;
+}
+
+.conversation-comments ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conversation-comments li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.conversation-comments small {
+  color: var(--muted);
+}
+
+.conversation-settings summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.9em;
+}
+
+.settings-chat {
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  max-width: 720px;
+}

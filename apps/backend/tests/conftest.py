@@ -10,7 +10,9 @@ from alembic import command
 from fastapi.testclient import TestClient
 
 MIGRATE_DIR = Path(__file__).resolve().parents[2] / "migrate"
+TOOLS_DIR = Path(__file__).resolve().parents[3] / "tools"
 sys.path.insert(0, str(MIGRATE_DIR))
+sys.path.insert(0, str(TOOLS_DIR))
 
 Handler = Callable[[httpx2.Request], httpx2.Response]
 

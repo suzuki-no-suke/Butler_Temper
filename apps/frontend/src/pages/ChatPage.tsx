@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { api, type Bot, type Conversation, type ConversationDetail } from '../api'
+import { api, type Bot, type Conversation, type ConversationDetail, type MessageComment } from '../api'
+import ConversationComments from '../components/ConversationComments'
+import MessageCommentEditor from '../components/MessageCommentEditor'
 
 const ROLE_LABEL = { user: 'あなた', assistant: 'BOT', error: 'エラー' } as const
 const SPEAKER_LABEL: Record<string, string> = { main: 'BOT（メイン）', sub: 'BOT（サブ）' }
@@ -55,6 +57,15 @@ export default function ChatPage() {
     } catch (e) {
       setError((e as Error).message)
     }
+  }
+
+  const updateComment = (messageId: number, comment: MessageComment | null) => {
+    setCurrent((prev) =>
+      prev && {
+        ...prev,
+        messages: prev.messages.map((m) => (m.id === messageId ? { ...m, comment } : m)),
+      },
+    )
   }
 
   const resume = async () => {
@@ -163,6 +174,13 @@ export default function ChatPage() {
                       <div className="message-content">{m.content}</div>
                     </div>
                   )}
+                  {m.role === 'assistant' && (
+                    <MessageCommentEditor
+                      messageId={m.id}
+                      comment={m.comment}
+                      onSaved={(comment) => updateComment(m.id, comment)}
+                    />
+                  )}
                   {m.agent_state && Object.keys(m.agent_state).length > 0 && (
                     <details className="agent-state">
                       <summary>このターンの後の Agent の状態</summary>
@@ -201,6 +219,11 @@ export default function ChatPage() {
                 </button>
               </form>
             )}
+            <ConversationComments
+              conversationId={current.id}
+              comments={current.comments}
+              onChange={(comments) => setCurrent((prev) => prev && { ...prev, comments })}
+            />
           </>
         )}
       </section>

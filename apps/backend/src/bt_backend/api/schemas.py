@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -58,6 +58,63 @@ class MessageCreate(BaseModel):
     content: str = Field(min_length=1)
 
 
+Rating = Literal["GOOD", "FINE", "BAD"]
+
+
+class MessageCommentIn(BaseModel):
+    rating: Rating
+    text: str = ""
+
+
+class MessageCommentOut(BaseModel):
+    rating: Rating
+    text: str
+    updated_at: datetime
+
+
+class ConversationCommentIn(BaseModel):
+    rating: Rating | None = None
+    text: str = ""
+
+
+class ConversationCommentOut(BaseModel):
+    id: int
+    rating: Rating | None
+    text: str
+    created_at: datetime
+
+
+class ConversationSettingsOut(BaseModel):
+    bot_id: int
+    bot_name: str
+    agent_id: str
+    agent_name: str
+    version: int
+    note: str
+    created_at: datetime
+    settings: dict[str, Any]
+
+
+class SettingsChatIn(BaseModel):
+    message: str = Field(min_length=1)
+    # 画面上の編集中の設定（JSON のテキスト。書きかけでもよい）
+    current_settings: str
+
+
+class SettingsChatMessageOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    proposed_settings: dict[str, Any] | None
+    created_at: datetime
+
+
+class SettingsChatOut(BaseModel):
+    messages: list[SettingsChatMessageOut]
+    # 今回の変更案（変更しない、またはエラーの場合は None）
+    proposed_settings: dict[str, Any] | None
+
+
 class MessageOut(BaseModel):
     id: int
     seq: int
@@ -67,6 +124,7 @@ class MessageOut(BaseModel):
     parts: list[dict[str, Any]] | None
     agent_state: dict[str, Any] | None
     created_at: datetime
+    comment: MessageCommentOut | None = None
 
 
 class ConversationOut(BaseModel):
@@ -87,6 +145,7 @@ class ConversationOut(BaseModel):
 
 class ConversationDetail(ConversationOut):
     messages: list[MessageOut]
+    comments: list[ConversationCommentOut]
 
 
 class RawCallOut(BaseModel):

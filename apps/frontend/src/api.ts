@@ -34,6 +34,41 @@ export interface BotDetail extends Bot {
   versions: Version[]
 }
 
+export type Rating = 'GOOD' | 'FINE' | 'BAD'
+export const RATINGS: Rating[] = ['GOOD', 'FINE', 'BAD']
+
+export interface MessageComment {
+  rating: Rating
+  text: string
+  updated_at: string
+}
+
+export interface ConversationComment {
+  id: number
+  rating: Rating | null
+  text: string
+  created_at: string
+}
+
+export interface ConversationSettings {
+  bot_id: number
+  bot_name: string
+  agent_id: string
+  agent_name: string
+  version: number
+  note: string
+  created_at: string
+  settings: Settings
+}
+
+export interface SettingsChatMessage {
+  id: number
+  role: 'user' | 'assistant' | 'error'
+  content: string
+  proposed_settings: Settings | null
+  created_at: string
+}
+
 export interface Message {
   id: number
   seq: number
@@ -43,6 +78,7 @@ export interface Message {
   parts: { speaker: string; text: string; secret?: string }[] | null
   agent_state: Record<string, unknown> | null
   created_at: string
+  comment: MessageComment | null
 }
 
 export interface Conversation {
@@ -62,6 +98,7 @@ export interface Conversation {
 
 export interface ConversationDetail extends Conversation {
   messages: Message[]
+  comments: ConversationComment[]
 }
 
 export class ApiError extends Error {}
@@ -83,7 +120,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(detail)
   }
-  return (await res.json()) as T
+  const text = await res.text()
+  return (text === '' ? null : JSON.parse(text)) as T
 }
 
 const post = <T>(path: string, body: unknown) =>
@@ -107,4 +145,26 @@ export const api = {
   resumeConversation: (id: number) => post<Conversation>(`/api/conversations/${id}/resume`, {}),
   sendMessage: (conversationId: number, content: string) =>
     post<Message[]>(`/api/conversations/${conversationId}/messages`, { content }),
+  conversationSettings: (id: number) =>
+    request<ConversationSettings>(`/api/conversations/${id}/settings`),
+  putMessageComment: (messageId: number, rating: Rating, text: string) =>
+    request<MessageComment>(`/api/messages/${messageId}/comment`, {
+      method: 'PUT',
+      body: JSON.stringify({ rating, text }),
+    }),
+  deleteMessageComment: (messageId: number) =>
+    request<null>(`/api/messages/${messageId}/comment`, { method: 'DELETE' }),
+  addConversationComment: (conversationId: number, rating: Rating | null, text: string) =>
+    post<ConversationComment>(`/api/conversations/${conversationId}/comments`, { rating, text }),
+  deleteConversationComment: (commentId: number) =>
+    request<null>(`/api/conversation-comments/${commentId}`, { method: 'DELETE' }),
+  settingsChat: (botId: number) =>
+    request<SettingsChatMessage[]>(`/api/bots/${botId}/settings-chat`),
+  sendSettingsChat: (botId: number, message: string, currentSettings: string) =>
+    post<{ messages: SettingsChatMessage[]; proposed_settings: Settings | null }>(
+      `/api/bots/${botId}/settings-chat`,
+      { message, current_settings: currentSettings },
+    ),
+  clearSettingsChat: (botId: number) =>
+    request<null>(`/api/bots/${botId}/settings-chat`, { method: 'DELETE' }),
 }

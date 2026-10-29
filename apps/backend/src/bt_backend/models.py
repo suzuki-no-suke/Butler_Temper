@@ -61,3 +61,39 @@ class Message(SQLModel, table=True):
     # このターンの後の Agent の状態
     agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class MessageComment(SQLModel, table=True):
+    """BOT の回答一つにつき一つの評価とコメント。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    message_id: int = Field(foreign_key="message.id", unique=True)
+    # GOOD / FINE / BAD
+    rating: str
+    text: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ConversationComment(SQLModel, table=True):
+    """会話全体へのコメント。都度いくつでも付けられる。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    conversation_id: int = Field(foreign_key="conversation.id", index=True)
+    # GOOD / FINE / BAD。付けなくてもよい
+    rating: str | None = None
+    text: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class SettingsChatMessage(SQLModel, table=True):
+    """BOT ごとの設定変更チャットの履歴。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    bot_id: int = Field(foreign_key="bot.id", index=True)
+    # user / assistant / error
+    role: str
+    content: str
+    # アシスタントが出した設定の変更案（変更しない場合は None）
+    proposed_settings: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utcnow)

@@ -1,0 +1,74 @@
+"""BOT 設定を JSON テキストに書き出す。
+
+BOT ごとに一つの JSON ファイル（全バージョンの設定を含む）を書き出す。
+書き出し先は既定で <data>/exports/bot_settings。同じ名前のファイルは上書きする。
+
+使い方（リポジトリ直下で実行）:
+    npm run export:bots
+    npm run export:bots -- 書き出し先のフォルダ
+"""
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from sqlmodel import Session, col, select
+
+from bt_backend.agents import UnknownAgent, get_agent_info
+from bt_backend.config import get_settings
+from bt_backend.db import get_engine
+from bt_backend.models import Bot, BotVersion
+
+
+def bot_document(session: Session, bot: Bot) -> dict[str, Any]:
+    try:
+        agent: dict[str, Any] = {
+            "id": bot.agent_id,
+            "name": get_agent_info(bot.agent_id).name,
+            "models": get_agent_info(bot.agent_id).models,
+        }
+    except UnknownAgent:
+        agent = {"id": bot.agent_id}
+    versions = session.exec(
+        select(BotVersion).where(BotVersion.bot_id == bot.id).order_by(col(BotVersion.version))
+    )
+    return {
+        "id": bot.id,
+        "name": bot.name,
+        "agent": agent,
+        "unavailable_reason": bot.unavailable_reason,
+        "created_at": bot.created_at.isoformat(),
+        "versions": [
+            {
+                "version": v.version,
+                "note": v.note,
+                "created_at": v.created_at.isoformat(),
+                "settings": v.settings,
+            }
+            for v in versions
+        ],
+    }
+
+
+def export(out_dir: Path) -> list[Path]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    with Session(get_engine()) as session:
+        for bot in session.exec(select(Bot).order_by(col(Bot.id))):
+            path = out_dir / f"bot-{bot.id}.json"
+            text = json.dumps(bot_document(session, bot), ensure_ascii=False, indent=2)
+            path.write_text(text + "\n", encoding="utf-8")
+            written.append(path)
+    return written
+
+
+def main(argv: list[str]) -> int:
+    out_dir = Path(argv[0]) if argv else get_settings().bt_data_dir / "exports" / "bot_settings"
+    written = export(out_dir)
+    print(f"{len(written)} 件の BOT 設定を {out_dir} に書き出しました")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

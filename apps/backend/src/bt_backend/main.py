@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from bt_backend.api import bots, conversations
+from bt_backend.api import bots, comments, conversations, settings_chat
 from bt_backend.config import get_settings
 from bt_backend.snapshot import current_source_hash
 
@@ -26,6 +26,8 @@ def create_app() -> FastAPI:
     )
     app.include_router(bots.router)
     app.include_router(conversations.router)
+    app.include_router(comments.router)
+    app.include_router(settings_chat.router)
     return app
 
 

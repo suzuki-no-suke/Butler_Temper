@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, type Bot, type Conversation } from '../api'
+import ConversationSettingsView from '../components/ConversationSettingsView'
 
 const formatDate = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ja-JP') : '—')
 
@@ -63,6 +64,7 @@ export default function HistoryPage() {
               {c.message_count} 件 / 開始 {formatDate(c.created_at)} / 最終{' '}
               {formatDate(c.last_message_at)}
             </div>
+            <ConversationSettingsView conversationId={c.id} />
             <div className="button-row">
               <button type="button" onClick={() => navigate(`/chat/${c.id}`)}>
                 {c.status === 'active' ? '開いて続ける' : '開く'}

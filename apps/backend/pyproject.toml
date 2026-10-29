@@ -39,7 +39,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
-mypy_path = "src:../migrate"
+mypy_path = "src:../migrate:../../tools"
 
 [[tool.mypy.overrides]]
 module = ["google.*"]

@@ -36,6 +36,7 @@ npm run dev
 - DB のマイグレーション（data フォルダに作成・更新）と、BOT が一つも無いときの BOT の作成（各 Agent の既定の設定）をしてから、Backend（http://localhost:8000）と Frontend（http://localhost:5173）を同時に起動する
 - Ctrl+C で両方とも止まる
 - 片方だけ起動するときは `npm run dev:backend` / `npm run dev:frontend`、マイグレーションだけなら `npm run migrate`、BOT の作成だけなら `npm run seed`
+- BOT 設定を JSON に書き出すときは `npm run export:bots`（既定の書き出し先は data/exports/bot_settings）
 
 4. ブラウザで http://localhost:5173/ を開く
 
