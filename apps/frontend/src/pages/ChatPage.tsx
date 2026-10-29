@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import { api, type Bot, type Conversation, type ConversationDetail, type MessageComment } from '../api'
 import ConversationComments from '../components/ConversationComments'
 import MessageCommentEditor from '../components/MessageCommentEditor'
+import RawPanel from '../components/RawPanel'
 
 const ROLE_LABEL = { user: 'あなた', assistant: 'BOT', error: 'エラー' } as const
 const SPEAKER_LABEL: Record<string, string> = { main: 'BOT（メイン）', sub: 'BOT（サブ）' }
@@ -15,6 +16,15 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loaded, setCurrent] = useState<ConversationDetail | null>(null)
   const [input, setInput] = useState('')
+  const [rawOpen, setRawOpen] = useState(() => {
+    try {
+      return localStorage.getItem('bt.rawPanelOpen') === '1'
+    } catch {
+      return false
+    }
+  })
+  // RAW パラメーター欄に出す発言。null なら最新の RAW のある発言
+  const [rawMessageId, setRawMessageId] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,6 +34,14 @@ export default function ChatPage() {
 
   // URL に会話 ID が無いときは、読み込み済みの会話を表示しない
   const current = conversationId && loaded?.id === Number(conversationId) ? loaded : null
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('bt.rawPanelOpen', rawOpen ? '1' : '0')
+    } catch {
+      // 保存できなくても動作には関係しない
+    }
+  }, [rawOpen])
 
   const loadConversations = useCallback((id: number) => {
     api.conversations(id).then(setConversations, (e: Error) => setError(e.message))
@@ -87,6 +105,7 @@ export default function ChatPage() {
     try {
       await api.sendMessage(current.id, input)
       setInput('')
+      setRawMessageId(null)
       setCurrent(await api.conversation(current.id))
     } catch (err) {
       setError((err as Error).message)
@@ -96,9 +115,12 @@ export default function ChatPage() {
   }
 
   const selectedBot = bots.find((b) => b.id === botId)
+  const withRaw = current?.messages.filter((m) => m.raw_call_id !== null) ?? []
+  const rawMessage =
+    withRaw.find((m) => m.id === rawMessageId) ?? (withRaw.length ? withRaw[withRaw.length - 1] : null)
 
   return (
-    <div className="chat-layout">
+    <div className={`chat-layout${current && rawOpen ? ' with-raw' : ''}`}>
       <aside className="sidebar">
         <label>
           BOT
@@ -157,7 +179,10 @@ export default function ChatPage() {
             )}
             <ol className="messages">
               {current.messages.map((m) => (
-                <li key={m.id} className="message-group">
+                <li
+                  key={m.id}
+                  className={`message-group${m.id === rawMessage?.id ? ' raw-selected' : ''}`}
+                >
                   {m.parts ? (
                     m.parts.map((p, i) => (
                       <div key={i} className={`message assistant speaker-${p.speaker}`}>
@@ -174,18 +199,21 @@ export default function ChatPage() {
                       <div className="message-content">{m.content}</div>
                     </div>
                   )}
+                  {m.raw_call_id !== null && m.id !== rawMessage?.id && (
+                    <button
+                      type="button"
+                      className="link raw-select"
+                      onClick={() => setRawMessageId(m.id)}
+                    >
+                      この発言の RAW を見る
+                    </button>
+                  )}
                   {m.role === 'assistant' && (
                     <MessageCommentEditor
                       messageId={m.id}
                       comment={m.comment}
                       onSaved={(comment) => updateComment(m.id, comment)}
                     />
-                  )}
-                  {m.agent_state && Object.keys(m.agent_state).length > 0 && (
-                    <details className="agent-state">
-                      <summary>このターンの後の Agent の状態</summary>
-                      <pre className="code">{JSON.stringify(m.agent_state, null, 2)}</pre>
-                    </details>
                   )}
                 </li>
               ))}
@@ -227,6 +255,18 @@ export default function ChatPage() {
           </>
         )}
       </section>
+
+      {current && (
+        <aside className="raw-panel">
+          <details
+            open={rawOpen}
+            onToggle={(e) => setRawOpen((e.currentTarget as HTMLDetailsElement).open)}
+          >
+            <summary>RAW パラメーター</summary>
+            <RawPanel message={rawMessage} />
+          </details>
+        </aside>
+      )}
     </div>
   )
 }

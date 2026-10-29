@@ -69,6 +69,30 @@ export interface SettingsChatMessage {
   created_at: string
 }
 
+export interface RawExchange {
+  label?: string
+  method?: string
+  url?: string
+  status?: number
+  sent_at?: string
+  received_at?: string
+  request_headers?: Record<string, string>
+  response_headers?: Record<string, string>
+  request?: unknown
+  response?: unknown
+}
+
+export interface RawCall {
+  id: number
+  conversation_id: number | null
+  agent_id: string
+  source_hash: string
+  exchanges: RawExchange[]
+  error: string | null
+  started_at: string
+  finished_at: string | null
+}
+
 export interface Message {
   id: number
   seq: number
@@ -145,6 +169,7 @@ export const api = {
   resumeConversation: (id: number) => post<Conversation>(`/api/conversations/${id}/resume`, {}),
   sendMessage: (conversationId: number, content: string) =>
     post<Message[]>(`/api/conversations/${conversationId}/messages`, { content }),
+  rawCall: (id: number) => request<RawCall>(`/api/raw-calls/${id}`),
   conversationSettings: (id: number) =>
     request<ConversationSettings>(`/api/conversations/${id}/settings`),
   putMessageComment: (messageId: number, rating: Rating, text: string) =>
