@@ -50,15 +50,11 @@ def client(data_dir: Path) -> Iterator[TestClient]:
 
 @pytest.fixture
 def llm(monkeypatch: pytest.MonkeyPatch) -> Callable[[Handler], None]:
-    """Agents が使う HTTP 通信を差し替える。"""
-    from bt_backend.agents import capture, chat
+    """Agent が使う HTTP 通信を差し替える。"""
+    from bt_backend.agents import llm as llm_module
 
     def install(handler: Handler) -> None:
-        monkeypatch.setattr(
-            chat,
-            "capturing_client",
-            lambda: capture.capturing_client(transport=httpx2.MockTransport(handler)),
-        )
+        monkeypatch.setattr(llm_module, "transport_override", httpx2.MockTransport(handler))
 
     return install
 
@@ -69,7 +65,7 @@ def json_response(status: int, body: dict[str, Any]) -> httpx2.Response:
     )
 
 
-def anthropic_message(text: str, model: str = "claude-test-20260101") -> dict[str, Any]:
+def anthropic_message(text: str, model: str = "claude-opus-5-5") -> dict[str, Any]:
     return {
         "id": "msg_1",
         "type": "message",

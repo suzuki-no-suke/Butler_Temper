@@ -111,9 +111,10 @@ button.link.active {
   padding: 16px;
 }
 
-.chat-layout {
+.chat-layout,
+.bots-layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 260px minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -131,7 +132,8 @@ button.link.active {
   margin: 0;
 }
 
-.conversation-list small {
+.conversation-list small,
+.bot-list small {
   display: block;
   color: var(--muted);
 }
@@ -142,6 +144,23 @@ button.link.active {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.message-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.message.speaker-sub {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+.agent-state summary {
+  font-size: 0.8em;
+  color: var(--muted);
+  cursor: pointer;
 }
 
 .message {
@@ -236,8 +255,88 @@ pre.code {
 }
 
 @media (max-width: 800px) {
+  .bots-layout,
   .chat-layout,
   .bot-columns {
     grid-template-columns: 1fr;
   }
+}
+
+a.button {
+  display: block;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 6px 14px;
+  text-align: center;
+  text-decoration: none;
+}
+
+button.secondary {
+  background: none;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.button-row,
+.name-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.name-row input {
+  font-size: 1.3em;
+  font-weight: bold;
+  max-width: 480px;
+}
+
+.bot-list li a {
+  display: block;
+  padding: 6px 4px;
+  color: var(--fg);
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.bot-list li a.active {
+  background: var(--user);
+  font-weight: bold;
+}
+
+.agent-info {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 14px;
+  background: var(--panel);
+  margin: 8px 0;
+}
+
+.agent-info .agent-name {
+  font-weight: bold;
+}
+
+.agent-info dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 6px 0;
+}
+
+.agent-info dd {
+  margin: 0;
+}
+
+.agent-info p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+pre.error {
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.chat-input button {
+  white-space: nowrap;
 }

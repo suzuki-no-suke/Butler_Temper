@@ -3,8 +3,9 @@
   "private": true,
   "scripts": {
     "postinstall": "npm --prefix apps/frontend install",
-    "dev": "npm run migrate && concurrently --names backend,frontend --prefix-colors blue,green --kill-others-on-fail \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev": "npm run migrate && npm run seed && concurrently --names backend,frontend --prefix-colors blue,green --kill-others-on-fail \"npm:dev:backend\" \"npm:dev:frontend\"",
     "migrate": "uv run --project apps/backend python apps/migrate/migrate.py upgrade",
+    "seed": "uv run --project apps/backend python -m bt_backend.seed",
     "migrate:check": "uv run --project apps/backend python apps/migrate/migrate.py check",
     "dev:backend": "uv run --project apps/backend uvicorn bt_backend.main:app --reload --reload-dir apps/backend/src --port 8000",
     "dev:frontend": "npm --prefix apps/frontend run dev",

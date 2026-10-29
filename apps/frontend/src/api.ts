@@ -12,11 +12,19 @@ export interface Version {
   created_at: string
 }
 
+export interface Agent {
+  id: string
+  name: string
+  description: string
+  models: Record<string, string>
+  default_settings: Settings
+}
+
 export interface Bot {
   id: number
   name: string
-  provider: string
-  models: Record<string, unknown>
+  agent_id: string
+  agent_name: string
   unavailable_reason: string | null
   created_at: string
   latest_version: number | null
@@ -32,6 +40,8 @@ export interface Message {
   role: 'user' | 'assistant' | 'error'
   content: string
   raw_call_id: number | null
+  parts: { speaker: string; text: string }[] | null
+  agent_state: Record<string, unknown> | null
   created_at: string
 }
 
@@ -42,6 +52,7 @@ export interface Conversation {
   bot_version: number
   title: string
   status: 'active' | 'stopped'
+  agent_state: Record<string, unknown> | null
   created_at: string
 }
 
@@ -75,16 +86,13 @@ const post = <T>(path: string, body: unknown) =>
   request<T>(path, { method: 'POST', body: JSON.stringify(body) })
 
 export const api = {
-  providers: () => request<string[]>('/api/providers'),
+  agents: () => request<Agent[]>('/api/agents'),
   bots: () => request<Bot[]>('/api/bots'),
   bot: (id: number) => request<BotDetail>(`/api/bots/${id}`),
-  createBot: (body: {
-    name: string
-    provider: string
-    models: Record<string, unknown>
-    settings: Settings
-    note: string
-  }) => post<BotDetail>('/api/bots', body),
+  createBot: (body: { name: string; agent_id: string; settings: Settings; note: string }) =>
+    post<BotDetail>('/api/bots', body),
+  renameBot: (botId: number, name: string) =>
+    request<BotDetail>(`/api/bots/${botId}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
   createVersion: (botId: number, body: { settings: Settings; note: string }) =>
     post<Version>(`/api/bots/${botId}/versions`, body),
   conversations: (botId?: number) =>

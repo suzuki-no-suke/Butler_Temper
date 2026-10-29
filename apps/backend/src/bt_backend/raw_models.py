@@ -17,11 +17,11 @@ class RawBase(SQLModel, registry=registry()):
 class RawCall(RawBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     conversation_id: int | None = Field(default=None, index=True)
-    provider: str
-    model: str
+    agent_id: str = Field(sa_column_kwargs={"server_default": ""})
     # Agents モジュールのソースのハッシュ（data/agent_snapshots/<hash>.zip）
     source_hash: str = Field(index=True)
     # HTTP でやり取りした内容（リクエスト・レスポンスの JSON）。認証ヘッダーは含めない
+    # 各要素の label は、Agent 内での呼び出しの役割（main / sub / memory など）
     exchanges: list[dict[str, Any]] = Field(sa_column=Column(JSON, nullable=False))
     error: str | None = None
     started_at: datetime = Field(default_factory=utcnow)

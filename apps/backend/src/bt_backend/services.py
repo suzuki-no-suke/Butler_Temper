@@ -1,8 +1,8 @@
-"""会話の進行。Agents を呼び、結果を通常の DB と RAW 用の DB に保存する。"""
+"""会話の進行。Agent を呼び、結果を通常の DB と RAW 用の DB に保存する。"""
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
-from bt_backend.agents import BotSpec, ChatTurn, run_chat
+from bt_backend.agents import ChatTurn, run_turn
 from bt_backend.config import get_settings
 from bt_backend.models import Bot, BotVersion, Conversation, Message, utcnow
 from bt_backend.raw_models import RawCall
@@ -26,7 +26,9 @@ def api_keys() -> dict[str, str | None]:
 def messages_of(session: Session, conversation_id: int) -> list[Message]:
     return list(
         session.exec(
-            select(Message).where(Message.conversation_id == conversation_id).order_by("seq")
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(col(Message.seq))
         )
     )
 
@@ -50,20 +52,20 @@ def send_message(
     session.commit()
 
     turns = [
-        ChatTurn(role="user" if m.role == "user" else "assistant", content=m.content)
+        ChatTurn(seq=m.seq, role="user" if m.role == "user" else "assistant", content=m.content)
         for m in history
         if m.role in ("user", "assistant")
-    ] + [ChatTurn(role="user", content=content)]
-    spec = BotSpec(provider=bot.provider, models=bot.models, settings=version.settings)
+    ] + [ChatTurn(seq=seq, role="user", content=content)]
 
     raw = RawCall(
         conversation_id=conversation.id,
-        provider=bot.provider,
-        model=str(bot.models.get("chat", "")),
+        agent_id=bot.agent_id,
         source_hash=current_source_hash(),
         exchanges=[],
     )
-    outcome = run_chat(spec, turns, api_keys())
+    outcome = run_turn(
+        bot.agent_id, version.settings, turns, dict(conversation.agent_state or {}), api_keys()
+    )
     raw.exchanges = outcome.exchanges
     raw.error = outcome.error
     raw.finished_at = utcnow()
@@ -77,7 +79,10 @@ def send_message(
             role="assistant",
             content=outcome.text or "",
             raw_call_id=raw.id,
+            parts=outcome.parts,
+            agent_state=outcome.state,
         )
+        conversation.agent_state = outcome.state
     else:
         # エラーは保存して止める
         reply = Message(
@@ -88,10 +93,10 @@ def send_message(
             raw_call_id=raw.id,
         )
         conversation.status = "stopped"
-        session.add(conversation)
         if outcome.model_unavailable:
-            bot.unavailable_reason = f"モデルが見つかりません（{outcome.model}）"
+            bot.unavailable_reason = "モデルが見つかりません（API が 404 を返しました）"
             session.add(bot)
+    session.add(conversation)
     session.add(reply)
     session.commit()
     session.refresh(user_message)

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import { api, type Bot, type Conversation, type ConversationDetail } from '../api'
 
 const ROLE_LABEL = { user: 'あなた', assistant: 'BOT', error: 'エラー' } as const
+const SPEAKER_LABEL: Record<string, string> = { main: 'BOT（メイン）', sub: 'BOT（サブ）' }
 
 export default function ChatPage() {
   const { conversationId } = useParams()
@@ -86,7 +87,7 @@ export default function ChatPage() {
             <option value="">選択してください</option>
             {bots.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.name}
+                {b.name}（{b.agent_name}）
                 {b.unavailable_reason ? '（停止中）' : ''}
               </option>
             ))}
@@ -129,9 +130,26 @@ export default function ChatPage() {
             </h2>
             <ol className="messages">
               {current.messages.map((m) => (
-                <li key={m.id} className={`message ${m.role}`}>
-                  <div className="message-role">{ROLE_LABEL[m.role]}</div>
-                  <div className="message-content">{m.content}</div>
+                <li key={m.id} className="message-group">
+                  {m.parts ? (
+                    m.parts.map((p, i) => (
+                      <div key={i} className={`message assistant speaker-${p.speaker}`}>
+                        <div className="message-role">{SPEAKER_LABEL[p.speaker] ?? p.speaker}</div>
+                        <div className="message-content">{p.text}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={`message ${m.role}`}>
+                      <div className="message-role">{ROLE_LABEL[m.role]}</div>
+                      <div className="message-content">{m.content}</div>
+                    </div>
+                  )}
+                  {m.agent_state && Object.keys(m.agent_state).length > 0 && (
+                    <details className="agent-state">
+                      <summary>このターンの後の Agent の状態</summary>
+                      <pre className="code">{JSON.stringify(m.agent_state, null, 2)}</pre>
+                    </details>
+                  )}
                 </li>
               ))}
             </ol>

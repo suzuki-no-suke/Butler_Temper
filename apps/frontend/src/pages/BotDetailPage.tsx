@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { useOutletContext, useParams } from 'react-router'
 import { api, type BotDetail } from '../api'
-import { fromDraft, toDraft, type SettingsDraft } from '../settingsForm'
+import AgentInfo from '../components/AgentInfo'
+import { formatSettings, parseSettings } from '../settingsJson'
+import type { BotsContext } from './BotsLayout'
 
 export default function BotDetailPage() {
   const botId = Number(useParams().botId)
+  const { agents, reloadBots } = useOutletContext<BotsContext>()
   const [bot, setBot] = useState<BotDetail | null>(null)
+  const [name, setName] = useState('')
   // 画面上の「編集中の設定」。保存するまで DB には書かない
-  const [draft, setDraft] = useState<SettingsDraft | null>(null)
+  const [draft, setDraft] = useState('')
   const [baseVersion, setBaseVersion] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [viewing, setViewing] = useState<number | null>(null)
@@ -18,9 +22,13 @@ export default function BotDetailPage() {
     api.bot(botId).then(
       (b) => {
         setBot(b)
+        setName(b.name)
+        setViewing(null)
+        setMessage(null)
+        setError(null)
         const latest = b.versions.at(-1)
         if (latest) {
-          setDraft(toDraft(latest.settings))
+          setDraft(formatSettings(latest.settings))
           setBaseVersion(latest.version)
         }
       },
@@ -30,19 +38,38 @@ export default function BotDetailPage() {
 
   if (!bot) return <div className="page">{error ? <p className="error">{error}</p> : '読み込み中…'}</div>
 
+  const agent = agents.find((a) => a.id === bot.agent_id)
+
   const loadVersion = (version: number) => {
     const v = bot.versions.find((x) => x.version === version)
     if (!v) return
-    setDraft(toDraft(v.settings))
+    setDraft(formatSettings(v.settings))
     setBaseVersion(v.version)
     setMessage(`バージョン ${v.version} を編集中の設定に読み込みました（まだ保存していません）`)
   }
 
+  const loadDefault = () => {
+    if (!agent) return
+    setDraft(formatSettings(agent.default_settings))
+    setBaseVersion(null)
+    setMessage('Agent の既定の設定を編集中の設定に読み込みました（まだ保存していません）')
+  }
+
+  const rename = async () => {
+    setError(null)
+    try {
+      setBot(await api.renameBot(bot.id, name))
+      reloadBots()
+      setMessage('名前を変更しました')
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   const save = async () => {
-    if (!draft) return
     setError(null)
     setMessage(null)
-    const parsed = fromDraft(draft)
+    const parsed = parseSettings(draft)
     if (!parsed.ok) {
       setError(parsed.error)
       return
@@ -50,6 +77,7 @@ export default function BotDetailPage() {
     try {
       const v = await api.createVersion(bot.id, { settings: parsed.settings, note })
       setBot(await api.bot(bot.id))
+      reloadBots()
       setBaseVersion(v.version)
       setNote('')
       setMessage(`バージョン ${v.version} として保存しました`)
@@ -62,55 +90,45 @@ export default function BotDetailPage() {
 
   return (
     <div className="page bot-detail">
-      <h2>{bot.name}</h2>
-      <dl className="bot-meta">
-        <dt>プロバイダー</dt>
-        <dd>{bot.provider}</dd>
-        <dt>モデル（変更不可）</dt>
-        <dd>
-          <code>{JSON.stringify(bot.models)}</code>
-        </dd>
-        {bot.unavailable_reason && (
-          <>
-            <dt>状態</dt>
-            <dd className="error">停止中: {bot.unavailable_reason}</dd>
-          </>
-        )}
-      </dl>
+      <div className="name-row">
+        <input value={name} onChange={(e) => setName(e.target.value)} aria-label="名前" />
+        <button type="button" onClick={rename} disabled={name === bot.name || name === ''}>
+          名前を変更
+        </button>
+      </div>
+      {bot.unavailable_reason && <p className="error">停止中: {bot.unavailable_reason}</p>}
+      {agent ? <AgentInfo agent={agent} /> : <p className="error">{bot.agent_name}</p>}
 
       <div className="bot-columns">
         <section>
-          <h3>編集中の設定（元: バージョン {baseVersion}）</h3>
-          {error && <p className="error">{error}</p>}
+          <h3>
+            編集中の設定（元: {baseVersion === null ? 'Agent の既定の設定' : `バージョン ${baseVersion}`}）
+          </h3>
+          {error && <pre className="error">{error}</pre>}
           {message && <p className="notice">{message}</p>}
-          {draft && (
-            <div className="form">
-              <label>
-                システムプロンプト
-                <textarea
-                  value={draft.systemPrompt}
-                  onChange={(e) => setDraft({ ...draft, systemPrompt: e.target.value })}
-                  rows={14}
-                />
-              </label>
-              <label>
-                その他の設定（JSON。params は API にそのまま渡す）
-                <textarea
-                  className="code"
-                  value={draft.restJson}
-                  onChange={(e) => setDraft({ ...draft, restJson: e.target.value })}
-                  rows={10}
-                />
-              </label>
-              <label>
-                変更メモ
-                <input value={note} onChange={(e) => setNote(e.target.value)} />
-              </label>
+          <div className="form">
+            <label>
+              Agent の全設定（JSON）
+              <textarea
+                className="code"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={28}
+              />
+            </label>
+            <label>
+              変更メモ
+              <input value={note} onChange={(e) => setNote(e.target.value)} />
+            </label>
+            <div className="button-row">
               <button type="button" onClick={save}>
                 新しいバージョンとして保存
               </button>
+              <button type="button" className="secondary" onClick={loadDefault} disabled={!agent}>
+                既定の設定を読み込む
+              </button>
             </div>
-          )}
+          </div>
         </section>
 
         <section>
@@ -134,7 +152,7 @@ export default function BotDetailPage() {
           {viewed && (
             <>
               <h4>バージョン {viewed.version} の内容</h4>
-              <pre className="code">{JSON.stringify(viewed.settings, null, 2)}</pre>
+              <pre className="code">{formatSettings(viewed.settings)}</pre>
             </>
           )}
         </section>

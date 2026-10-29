@@ -14,9 +14,8 @@ def utcnow() -> datetime:
 class Bot(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
-    # BOT ごとに固定する。変える場合は新しい BOT を作る
-    provider: str
-    models: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    # 採用する Agent（コードで定義）。BOT ごとに固定する
+    agent_id: str = Field(sa_column_kwargs={"server_default": ""})
     # モデルが存在しなくなった等で実行を止めている理由
     unavailable_reason: str | None = None
     created_at: datetime = Field(default_factory=utcnow)
@@ -41,6 +40,8 @@ class Conversation(SQLModel, table=True):
     title: str = ""
     # active / stopped（エラーで停止）
     status: str = "active"
+    # Agent の状態（メモリなど）。Agent が自分で保存する
+    agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -53,4 +54,8 @@ class Message(SQLModel, table=True):
     content: str
     # RAW 用の DB の RawCall.id（DB が別なので外部キーにはしない）
     raw_call_id: int | None = None
+    # 表示用の内訳（例: メインとサブの発言）
+    parts: list[dict[str, Any]] | None = Field(default=None, sa_column=Column(JSON))
+    # このターンの後の Agent の状態
+    agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)

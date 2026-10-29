@@ -1,6 +1,7 @@
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router'
 import BotDetailPage from './pages/BotDetailPage'
-import BotsPage from './pages/BotsPage'
+import BotNewPage from './pages/BotNewPage'
+import BotsLayout from './pages/BotsLayout'
 import ChatPage from './pages/ChatPage'
 
 export default function App() {
@@ -18,8 +19,11 @@ export default function App() {
           <Route path="/" element={<Navigate to="/chat" replace />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/chat/:conversationId" element={<ChatPage />} />
-          <Route path="/bots" element={<BotsPage />} />
-          <Route path="/bots/:botId" element={<BotDetailPage />} />
+          <Route path="/bots" element={<BotsLayout />}>
+            <Route index element={<p className="hint">左の一覧から BOT を選ぶか、新しい BOT を作ってください。</p>} />
+            <Route path="new" element={<BotNewPage />} />
+            <Route path=":botId" element={<BotDetailPage />} />
+          </Route>
         </Routes>
       </main>
     </HashRouter>
