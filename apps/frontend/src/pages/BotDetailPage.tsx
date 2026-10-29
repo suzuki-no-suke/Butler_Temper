@@ -54,7 +54,7 @@ export default function BotDetailPage() {
     if (!agent) return
     setDraft(formatSettings(agent.default_settings))
     setBaseVersion(null)
-    setMessage('Agent の既定の設定を編集中の設定に読み込みました（まだ保存していません）')
+    setMessage('AgentCore の既定の Agent 設定を編集中の設定に読み込みました（まだ保存していません）')
   }
 
   const save = async () => {
@@ -94,7 +94,7 @@ export default function BotDetailPage() {
   }
 
   const viewed = bot.versions.find((v) => v.version === viewing)
-  // 名前を変えて保存すると、新しい BOT として分かれる（フォーク）
+  // 名前を変えて保存すると、新しい Agent として分かれる（フォーク）
   const forking = name.trim() !== '' && name.trim() !== bot.name
 
   return (
@@ -108,16 +108,17 @@ export default function BotDetailPage() {
         )}
       </div>
       <p className="hint">
-        名前を変えて保存すると、この BOT はそのままに、新しい名前の BOT を v1 から作ります
-        （バージョンの履歴と会話は引き継ぎません）。
+        名前を変えずに保存すると、同じ名前の Agent の新しいバージョンになります。
+        名前を変えて保存すると、この Agent はそのままに、同じ AgentCore で新しい名前の Agent を v1
+        から作ります（フォーク。バージョンの履歴と会話は引き継ぎません）。
       </p>
       {bot.forked_from_bot_id && (
         <p className="hint">
           <Link to={`/bots/${bot.forked_from_bot_id}`}>
-            {bot.forked_from_bot_name ?? `BOT #${bot.forked_from_bot_id}`}
+            {bot.forked_from_bot_name ?? `Agent #${bot.forked_from_bot_id}`}
           </Link>
           {bot.forked_from_version !== null && ` のバージョン ${bot.forked_from_version}`}
-          から分かれた BOT です。
+          からフォークした Agent です。
         </p>
       )}
       {bot.unavailable_reason && <p className="error">停止中: {bot.unavailable_reason}</p>}
@@ -126,13 +127,13 @@ export default function BotDetailPage() {
       <div className="bot-columns">
         <section>
           <h3>
-            編集中の設定（元: {baseVersion === null ? 'Agent の既定の設定' : `バージョン ${baseVersion}`}）
+            編集中の設定（元: {baseVersion === null ? 'AgentCore の既定の Agent 設定' : `バージョン ${baseVersion}`}）
           </h3>
           {error && <pre className="error">{error}</pre>}
           {message && <p className="notice">{message}</p>}
           <div className="form">
             <label>
-              Agent の全設定（JSON）
+              Agent 設定（JSON）
               <textarea
                 className="code"
                 value={draft}
@@ -146,10 +147,10 @@ export default function BotDetailPage() {
             </label>
             <div className="button-row">
               <button type="button" onClick={save}>
-                {forking ? `「${name.trim()}」として新しい BOT を作る` : '新しいバージョンとして保存'}
+                {forking ? `「${name.trim()}」としてフォークする` : '新しいバージョンとして保存'}
               </button>
               <button type="button" className="secondary" onClick={loadDefault} disabled={!agent}>
-                既定の設定を読み込む
+                既定の Agent 設定を読み込む
               </button>
             </div>
           </div>

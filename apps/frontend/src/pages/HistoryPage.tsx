@@ -34,7 +34,7 @@ export default function HistoryPage() {
     <div className="page">
       <h2>チャット履歴</h2>
       <label className="filter">
-        BOT で絞り込む
+        Agent で絞り込む
         <select
           value={botId ?? ''}
           onChange={(e) => setBotId(e.target.value === '' ? null : Number(e.target.value))}

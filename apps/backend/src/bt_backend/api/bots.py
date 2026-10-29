@@ -34,7 +34,7 @@ def _agent_name(agent_id: str) -> str:
     try:
         return get_agent_info(agent_id).name
     except UnknownAgent:
-        return f"（不明な Agent: {agent_id}）"
+        return f"（不明な AgentCore: {agent_id}）"
 
 
 def _bot_out(session: Session, bot: Bot) -> BotOut:
@@ -56,7 +56,7 @@ def _validate(agent_id: str, settings: dict[str, Any]) -> None:
     try:
         validate_settings(agent_id, settings)
     except UnknownAgent as e:
-        raise HTTPException(400, f"Agent が見つかりません: {agent_id}") from e
+        raise HTTPException(400, f"AgentCore が見つかりません: {agent_id}") from e
     except InvalidSettings as e:
         raise HTTPException(400, f"設定が正しくありません:\n{e}") from e
 
@@ -88,7 +88,7 @@ def create_bot(body: BotCreate, session: SessionDep) -> BotDetail:
 def get_bot(bot_id: int, session: SessionDep) -> BotDetail:
     bot = session.get(Bot, bot_id)
     if bot is None:
-        raise HTTPException(404, "BOT が見つかりません")
+        raise HTTPException(404, "Agent が見つかりません")
     versions = session.exec(
         select(BotVersion).where(BotVersion.bot_id == bot_id).order_by(col(BotVersion.version))
     ).all()
@@ -105,7 +105,7 @@ def fork_bot(bot_id: int, body: BotFork, session: SessionDep) -> BotDetail:
     """
     origin = session.get(Bot, bot_id)
     if origin is None:
-        raise HTTPException(404, "BOT が見つかりません")
+        raise HTTPException(404, "Agent が見つかりません")
     if body.name == origin.name:
         raise HTTPException(
             400, "名前を変えずに保存する場合は、新しいバージョンとして保存してください"
@@ -129,7 +129,7 @@ def fork_bot(bot_id: int, body: BotFork, session: SessionDep) -> BotDetail:
 def create_version(bot_id: int, body: VersionCreate, session: SessionDep) -> VersionOut:
     bot = session.get(Bot, bot_id)
     if bot is None:
-        raise HTTPException(404, "BOT が見つかりません")
+        raise HTTPException(404, "Agent が見つかりません")
     _validate(bot.agent_id, body.settings)
     version = BotVersion(
         bot_id=bot_id,

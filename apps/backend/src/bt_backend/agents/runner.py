@@ -47,7 +47,7 @@ def run_turn(
     outcome = TurnOutcome(state=state)
     agent = AGENTS.get(agent_id)
     if agent is None:
-        outcome.error = f"Agent が見つかりません: {agent_id}"
+        outcome.error = f"AgentCore が見つかりません: {agent_id}"
         return outcome
     llm = LlmSession(api_keys)
     try:

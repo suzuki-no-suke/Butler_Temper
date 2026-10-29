@@ -6,8 +6,8 @@ import EvaluationSummary from '../components/EvaluationSummary'
 import MessageCommentEditor from '../components/MessageCommentEditor'
 import RawPanel from '../components/RawPanel'
 
-const ROLE_LABEL = { user: 'あなた', assistant: 'BOT', error: 'エラー' } as const
-const SPEAKER_LABEL: Record<string, string> = { main: 'BOT（メイン）', sub: 'BOT（サブ）' }
+const ROLE_LABEL = { user: 'あなた', assistant: 'Agent', error: 'エラー' } as const
+const SPEAKER_LABEL: Record<string, string> = { main: 'Agent（メイン）', sub: 'Agent（サブ）' }
 
 export default function ChatPage() {
   const { conversationId } = useParams()
@@ -124,7 +124,7 @@ export default function ChatPage() {
     <div className={`chat-layout${current && rawOpen ? ' with-raw' : ''}`}>
       <aside className="sidebar">
         <label>
-          BOT
+          Agent
           <select
             value={botId ?? ''}
             onChange={(e) => selectBot(e.target.value === '' ? null : Number(e.target.value))}
@@ -167,7 +167,7 @@ export default function ChatPage() {
       <section className="chat-main">
         {error && <p className="error">{error}</p>}
         {!current ? (
-          <p className="hint">BOT を選んで、新しい会話を始めるか、過去の会話を選んでください。</p>
+          <p className="hint">Agent を選んで、新しい会話を始めるか、過去の会話を選んでください。</p>
         ) : (
           <>
             <h2>
@@ -226,7 +226,7 @@ export default function ChatPage() {
                   引き継いで続ける
                 </button>
                 <p className="hint">
-                  エラーより前のやり取りを引き継いだ新しい会話を、同じ BOT 設定のバージョンで始めます。
+                  エラーより前のやり取りを引き継いだ新しい会話を、同じ Agent のバージョンで始めます。
                 </p>
               </div>
             ) : (

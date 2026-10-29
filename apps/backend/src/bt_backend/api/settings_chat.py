@@ -30,7 +30,7 @@ def _messages(session: SessionDep, bot_id: int) -> list[SettingsChatMessage]:
 def _bot(session: SessionDep, bot_id: int) -> Bot:
     bot = session.get(Bot, bot_id)
     if bot is None:
-        raise HTTPException(404, "BOT が見つかりません")
+        raise HTTPException(404, "Agent が見つかりません")
     return bot
 
 
@@ -54,7 +54,7 @@ def post_settings_chat(bot_id: int, body: SettingsChatIn, session: SessionDep) -
     try:
         get_agent_info(bot.agent_id)
     except UnknownAgent as e:
-        raise HTTPException(400, f"Agent が見つかりません: {bot.agent_id}") from e
+        raise HTTPException(400, f"AgentCore が見つかりません: {bot.agent_id}") from e
 
     history = [
         ChatLine(role=m.role, content=m.content)

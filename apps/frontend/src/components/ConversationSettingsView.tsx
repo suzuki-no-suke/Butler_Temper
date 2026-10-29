@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, type ConversationSettings } from '../api'
 import { formatSettings } from '../settingsJson'
 
-// 会話が使っている BOT 設定を、開いたときに読み込んで表示する
+// 会話が使っている Agent 設定を、開いたときに読み込んで表示する
 export default function ConversationSettingsView({ conversationId }: { conversationId: number }) {
   const [settings, setSettings] = useState<ConversationSettings | null>(null)
   const [error, setError] = useState<string | null>(null)

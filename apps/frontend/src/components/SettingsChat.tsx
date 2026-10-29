@@ -52,7 +52,7 @@ export default function SettingsChat({ botId, currentSettings, onProposal }: Pro
     <section className="settings-chat">
       <h3>設定変更チャット</h3>
       <p className="hint">
-        要望を書くと、変更案が「編集中の設定」に反映されます。保存するまで BOT は変わりません。
+        要望を書くと、変更案が「編集中の設定」に反映されます。保存するまで Agent は変わりません。
       </p>
       <ol className="messages">
         {messages.map((m) => (

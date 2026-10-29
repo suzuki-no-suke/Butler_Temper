@@ -5,7 +5,7 @@ export default function AgentInfo({ agent }: { agent: Agent }) {
     <div className="agent-info">
       <div className="agent-name">{agent.name}</div>
       <dl>
-        <dt>Agent ID</dt>
+        <dt>AgentCore ID</dt>
         <dd>
           <code>{agent.id}</code>
         </dd>

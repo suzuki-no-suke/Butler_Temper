@@ -27,10 +27,10 @@ SETTINGS_CHAT_MODEL = "claude-sonnet-5-5"
 SETTINGS_CHAT_MAX_TOKENS = 8192
 
 INSTRUCTIONS = """\
-あなたは、チャットボット（BOT）の設定を調整する手伝いをするアシスタントです。
-利用者は、BOT の振る舞いや性格がプロンプトや設定でどう変わるかを調べています。
-BOT は「Agent」という動き方の定義と、その Agent の設定（JSON）でできています。
-利用者の要望を読み、編集中の設定をもとに変更案を作ってください。
+あなたは、対話相手となる Agent（チャットボット）の設定を調整する手伝いをするアシスタントです。
+利用者は、Agent の振る舞いや性格がプロンプトや設定でどう変わるかを調べています。
+Agent は、AgentCore（モデルの選択と処理の流れ）と、それに適用する Agent 設定（JSON）でできています。
+利用者の要望を読み、編集中の Agent 設定をもとに変更案を作ってください。
 
 - reply には、何をどう変えたか（変えなかった場合はその理由や、確認したいこと）を日本語で簡潔に書く
 - 設定を変える場合は、settings に変更後の設定の全体を入れる。
@@ -69,12 +69,13 @@ def _output_type(agent_id: str) -> type[BaseModel]:
 def _prompt(agent_id: str, current_settings: str, history: list[ChatLine], request: str) -> str:
     info = AGENTS[agent_id].info()
     lines = [f"{'利用者' if h.role == 'user' else 'アシスタント'}: {h.content}" for h in history]
+    models = json.dumps(info.models, ensure_ascii=False)
+    defaults = json.dumps(info.default_settings, ensure_ascii=False, indent=2)
     return "\n\n".join(
         [
-            f"# Agent\n名前: {info.name}\nモデル: {json.dumps(info.models, ensure_ascii=False)}\n"
-            f"説明: {info.description}",
-            f"# 既定の設定\n{json.dumps(info.default_settings, ensure_ascii=False, indent=2)}",
-            f"# 編集中の設定\n{current_settings}",
+            f"# AgentCore\n名前: {info.name}\nモデル: {models}\n説明: {info.description}",
+            f"# 既定の Agent 設定\n{defaults}",
+            f"# 編集中の Agent 設定\n{current_settings}",
             "# これまでのやり取り\n" + ("\n".join(lines) if lines else "（なし）"),
             f"# 利用者の要望\n{request}",
         ]

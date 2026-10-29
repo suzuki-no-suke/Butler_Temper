@@ -47,10 +47,10 @@ export default function BotNewPage() {
 
   return (
     <div className="page">
-      <h2>新しい BOT を作る</h2>
+      <h2>新しい Agent を作る</h2>
       <form className="form" onSubmit={create}>
         <label>
-          採用する Agent
+          採用する AgentCore
           <select value={agentId} onChange={(e) => selectAgent(e.target.value)} required>
             <option value="">選択してください</option>
             {agents.map((a) => (
@@ -67,7 +67,7 @@ export default function BotNewPage() {
         </label>
         {agent && (
           <label>
-            Agent の全設定（JSON。初期値は Agent の既定の設定）
+            Agent 設定（JSON。初期値は AgentCore の既定の Agent 設定）
             <textarea
               className="code"
               value={settingsText}

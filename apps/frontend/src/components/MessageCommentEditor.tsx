@@ -8,7 +8,7 @@ interface Props {
   onSaved: (comment: MessageComment | null) => void
 }
 
-// BOT の回答一つにつき一つの評価とコメント
+// Agent の回答一つにつき一つの評価とコメント
 export default function MessageCommentEditor({ messageId, comment, onSaved }: Props) {
   const [editing, setEditing] = useState(false)
   const [rating, setRating] = useState<Rating | null>(comment?.rating ?? null)

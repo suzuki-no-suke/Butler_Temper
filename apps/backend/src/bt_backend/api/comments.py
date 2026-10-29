@@ -24,7 +24,7 @@ def _assistant_message(session: SessionDep, message_id: int) -> Message:
     if message is None:
         raise HTTPException(404, "発言が見つかりません")
     if message.role != "assistant":
-        raise HTTPException(400, "評価できるのは BOT の回答だけです")
+        raise HTTPException(400, "評価できるのは Agent の回答だけです")
     return message
 
 

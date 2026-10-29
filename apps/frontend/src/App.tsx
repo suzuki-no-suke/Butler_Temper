@@ -13,7 +13,7 @@ export default function App() {
         <nav>
           <NavLink to="/chat">チャット</NavLink>
           <NavLink to="/history">履歴</NavLink>
-          <NavLink to="/bots">BOT 設定</NavLink>
+          <NavLink to="/bots">Agent 設定</NavLink>
         </nav>
       </header>
       <main className="app-main">
@@ -23,7 +23,7 @@ export default function App() {
           <Route path="/chat/:conversationId" element={<ChatPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/bots" element={<BotsLayout />}>
-            <Route index element={<p className="hint">左の一覧から BOT を選ぶか、新しい BOT を作ってください。</p>} />
+            <Route index element={<p className="hint">左の一覧から Agent を選ぶか、新しい Agent を作ってください。</p>} />
             <Route path="new" element={<BotNewPage />} />
             <Route path=":botId" element={<BotDetailPage />} />
           </Route>

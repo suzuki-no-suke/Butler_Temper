@@ -1,4 +1,4 @@
-"""BOT が一つも無いとき、各 Agent の既定の設定で BOT を作る。"""
+"""Agent が一つも無いとき、各 AgentCore の既定の Agent 設定で Agent を作る。"""
 
 from sqlmodel import Session, select
 
@@ -28,4 +28,8 @@ def seed() -> int:
 
 if __name__ == "__main__":
     created = seed()
-    print(f"BOT を {created} 件作成しました" if created else "BOT が既にあるため作成しませんでした")
+    print(
+        f"Agent を {created} 件作成しました"
+        if created
+        else "Agent が既にあるため作成しませんでした"
+    )

@@ -46,7 +46,7 @@ def resume_conversation(session: Session, conversation: Conversation) -> Convers
     bot = session.get(Bot, conversation.bot_id)
     assert bot is not None and conversation.id is not None
     if bot.unavailable_reason:
-        raise ConversationClosed(f"この BOT は停止しています: {bot.unavailable_reason}")
+        raise ConversationClosed(f"この Agent は停止しています: {bot.unavailable_reason}")
 
     kept = [m for m in messages_of(session, conversation.id) if m.role in ("user", "assistant")]
     while kept and kept[-1].role == "user":
@@ -88,7 +88,7 @@ def send_message(
     version = session.get(BotVersion, conversation.bot_version_id)
     assert bot is not None and version is not None and conversation.id is not None
     if bot.unavailable_reason:
-        raise ConversationClosed(f"この BOT は停止しています: {bot.unavailable_reason}")
+        raise ConversationClosed(f"この Agent は停止しています: {bot.unavailable_reason}")
 
     history = messages_of(session, conversation.id)
     seq = len(history)

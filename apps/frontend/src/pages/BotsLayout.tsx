@@ -27,9 +27,9 @@ export default function BotsLayout() {
     <div className="bots-layout">
       <aside className="sidebar">
         <NavLink to="/bots/new" className="button">
-          新しい BOT を作る
+          新しい Agent を作る
         </NavLink>
-        <h3>設定済みの BOT</h3>
+        <h3>設定済みの Agent</h3>
         {error && <p className="error">{error}</p>}
         <ul className="bot-list">
           {bots.map((b) => (

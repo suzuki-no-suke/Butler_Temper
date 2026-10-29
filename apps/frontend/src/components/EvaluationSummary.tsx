@@ -8,7 +8,7 @@ interface Props {
 
 const PREVIEW_CHARS = 40
 
-// この会話で、ここまでに BOT の回答へ付けた評価とコメントの一覧
+// この会話で、ここまでに Agent の回答へ付けた評価とコメントの一覧
 export default function EvaluationSummary({ messages, onSelect }: Props) {
   const rated = messages.filter((m) => m.comment)
   const counts = RATINGS.map((r) => [r, rated.filter((m) => m.comment?.rating === r).length] as const)

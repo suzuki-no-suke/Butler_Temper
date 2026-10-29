@@ -78,9 +78,9 @@ def list_conversations(session: SessionDep, bot_id: int | None = None) -> list[C
 def create_conversation(body: ConversationCreate, session: SessionDep) -> ConversationOut:
     bot = session.get(Bot, body.bot_id)
     if bot is None:
-        raise HTTPException(404, "BOT が見つかりません")
+        raise HTTPException(404, "Agent が見つかりません")
     if bot.unavailable_reason:
-        raise HTTPException(409, f"この BOT は停止しています: {bot.unavailable_reason}")
+        raise HTTPException(409, f"この Agent は停止しています: {bot.unavailable_reason}")
     # 開始時点の最新バージョンに固定する
     version = session.exec(
         select(BotVersion)
@@ -134,7 +134,7 @@ def get_conversation(conversation_id: int, session: SessionDep) -> ConversationD
 
 @router.get("/conversations/{conversation_id}/settings")
 def get_conversation_settings(conversation_id: int, session: SessionDep) -> ConversationSettingsOut:
-    """会話が使っている（固定されている）BOT 設定のバージョン。"""
+    """会話が使っている（固定されている）Agent のバージョン。"""
     c = _get_conversation(session, conversation_id)
     bot = session.get(Bot, c.bot_id)
     version = session.get(BotVersion, c.bot_version_id)
@@ -142,7 +142,7 @@ def get_conversation_settings(conversation_id: int, session: SessionDep) -> Conv
     try:
         agent_name = get_agent_info(bot.agent_id).name
     except UnknownAgent:
-        agent_name = f"（不明な Agent: {bot.agent_id}）"
+        agent_name = f"（不明な AgentCore: {bot.agent_id}）"
     return ConversationSettingsOut(
         bot_id=bot.id or 0,
         bot_name=bot.name,

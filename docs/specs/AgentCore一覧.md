@@ -1,9 +1,9 @@
-Agent 一覧
+AgentCore 一覧
 ==========
 
 # 概要
 
-本資料は、Backend に用意する Agent（BOT の動き方の定義）と、その既定の動作を定める。
+本資料は、Backend に用意する AgentCore（モデルの選択と処理の流れ）と、その既定の動作を定める。
 
 ## 全体像
 
@@ -11,15 +11,15 @@ Agent 一覧
 - Jev 判定で秘匿情報を伝える（secret-relay） : 開示条件を TypeSafe AI の Jev が判定し、満たしたら秘匿情報をメインに伝える
 - 秘密開示系の二つは、秘密と開示条件の組を secrets に複数書ける
 - シンプル会話（claude-simple-fable / -opus / -sonnet / -haiku） : システムプロンプトだけを設定して会話する
-- 各 Agent の設定の項目と既定値は、コード（apps/backend/src/bt_backend/agents）が原本。BOT 設定画面で確認できる
+- 各 AgentCore が受け付ける Agent 設定の項目と既定値は、コード（apps/backend/src/bt_backend/agents）が原本。Agent 設定画面で確認できる
 - モデル ID は日付の付かない ID を使う。4.6 世代以降は日付の無い ID 自体が固定のスナップショットで、日付付きの ID は無い（docs/knowhows/AnthropicのモデルID.md）
 
 
 # 作業手順
 
-1. Agent を足すときは apps/backend/src/bt_backend/agents に Agent のクラスを作り、registry.py に登録する
-2. 設定の項目は AgentSettings を継承したモデルで定義し、すべての項目に既定値を付ける
-3. 本資料に Agent を書き足す
+1. AgentCore を足すときは apps/backend/src/bt_backend/agents に AgentCore のクラスを作り、registry.py に登録する
+2. Agent 設定の項目は AgentSettings を継承したモデルで定義し、すべての項目に既定値を付ける
+3. 本資料に AgentCore を書き足す
 
 
 # 二層の秘密開示（secret-keeper）
@@ -116,4 +116,8 @@ Agent 一覧
 
 ## (仕様: docs/specs/アプリケーション仕様.md)
 
-- BOT と Agent の関係、BOT 設定画面についての原本
+- Agent と AgentCore の関係、Agent 設定画面についての原本
+
+## (仕様: docs/specs/プロジェクト辞書.md)
+
+- Agent・AgentCore・Agent 設定・バージョン・フォークなどの呼称の意味

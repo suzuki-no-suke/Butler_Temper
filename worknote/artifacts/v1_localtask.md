@@ -10,7 +10,7 @@ v1（2026-10-29 時点の claude ブランチ）のうち、クラウドのセ�
 - PostgreSQL での動作
 - 本番相当の配置（Apache での Frontend の静的配信、systemd からの Backend の起動）
 - TypeSafe AI（Jev）との疎通
-- 本物の LLM API での各 Agent の動作
+- 本物の LLM API での各 AgentCore の動作
 
 
 # 作業手順
@@ -30,7 +30,7 @@ SQLite と PostgreSQL の両対応で作ったが、SQLite でしか動かして
   - 例) `postgresql+psycopg://user:pass@localhost/butler_temper`
   - PostgreSQL のドライバ（psycopg など）は、まだ依存ライブラリに入れていない。`cd apps/backend && uv add "psycopg[binary]"` などで足す必要がある
 - `npm run migrate` が通るか（通常の DB と RAW 用の DB の二つ）
-- `npm run dev` で起動し、BOT の作成、会話、コメント、設定変更チャット、履歴が動くか
+- `npm run dev` で起動し、Agent の作成、会話、コメント、設定変更チャット、履歴が動くか
 - 確かめたい点
   - JSON の列（設定、Agent の状態、RAW）が読み書きできるか
   - 日時がずれないか（UTC で保存している）
@@ -52,7 +52,7 @@ Apache などで Frontend を静的配信し、Backend は systemd から起動�
   - `BT_CORS_ORIGINS` に Frontend の配信元を入れる（既定は全許可）
   - 起動前に `npm run migrate`（または `uv run --project apps/backend python apps/migrate/migrate.py upgrade`）を流す
 - 確かめたい点
-  - 起動時に `data/agent_snapshots/<ハッシュ>.zip` が作られるか（配置先でも Agents のソースが読めるか）
+  - 起動時に `data/agent_snapshots/<ハッシュ>.zip` が作られるか（配置先でも AgentCore のモジュールのソースが読めるか）
 
 
 # TypeSafe AI（Jev）との疎通
@@ -63,12 +63,12 @@ Apache などで Frontend を静的配信し、Backend は systemd から起動�
 
 - `secrets/secrets.env` に `BT_TYPESAFE_API_KEY=...` を書く
 - `npm run check:connectivity` を流し、[TypeSafe AI] が OK になるか
-  - モデル一覧が表示されるので、jev-latest ではない固定の版の名前を控える（secret-relay Agent を固定の版にするため）
-- 「Jev 判定で秘匿情報を伝える」BOT で会話し、開示条件を満たすと秘密が伝わるか
+  - モデル一覧が表示されるので、jev-latest ではない固定の版の名前を控える（secret-relay AgentCore を固定の版にするため）
+- 「Jev 判定で秘匿情報を伝える」Agent で会話し、開示条件を満たすと秘密が伝わるか
   - 各ターンの「Agent の状態」の last_judge に、秘密ごとの確率が出る
 
 
-# 本物の LLM API での各 Agent の動作
+# 本物の LLM API での各 AgentCore の動作
 
 テストは偽の API で行っている。本物の API では、Anthropic の疎通と設定変更チャットの一回の呼び出しだけを確かめた。
 

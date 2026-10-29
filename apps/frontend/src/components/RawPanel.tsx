@@ -73,7 +73,7 @@ export default function RawPanel({ message }: { message: Message | null }) {
 
   return (
     <div className="raw-panel-body">
-      <p className="hint">発言 #{message.seq + 1}（{message.role === 'error' ? 'エラー' : 'BOT'}）の記録</p>
+      <p className="hint">発言 #{message.seq + 1}（{message.role === 'error' ? 'エラー' : 'Agent'}）の記録</p>
       {error && <p className="error">{error}</p>}
 
       {message.role === 'assistant' && (
@@ -115,7 +115,7 @@ export default function RawPanel({ message }: { message: Message | null }) {
           <details open>
             <summary>呼び出しの概要</summary>
             <dl className="raw-summary">
-              <dt>Agent</dt>
+              <dt>AgentCore</dt>
               <dd>
                 <code>{shown.agent_id}</code>
               </dd>
