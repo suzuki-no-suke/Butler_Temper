@@ -15,3 +15,9 @@ def test_plain_key_is_accepted(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     monkeypatch.delenv("BT_ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "plain")
     assert Settings(_env_file=tmp_path / "none.env").anthropic_api_key == "plain"
+
+
+def test_alembic_ini_is_ascii() -> None:
+    # Windows では configparser が cp932 で読むため、ASCII 以外を書くと読めなくなる
+    ini = Path(__file__).resolve().parents[2] / "migrate" / "alembic.ini"
+    ini.read_bytes().decode("ascii")

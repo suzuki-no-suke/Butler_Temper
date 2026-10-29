@@ -17,7 +17,9 @@ def _env_file() -> Path:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=_env_file(), extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_env_file(), env_file_encoding="utf-8", extra="ignore"
+    )
 
     bt_data_dir: Path = REPO_ROOT / "data"
     # 未指定なら data フォルダ内の SQLite を使う
@@ -43,11 +45,11 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        return self.bt_database_url or f"sqlite:///{self.bt_data_dir / 'app.db'}"
+        return self.bt_database_url or f"sqlite:///{(self.bt_data_dir / 'app.db').as_posix()}"
 
     @property
     def raw_database_url(self) -> str:
-        return self.bt_raw_database_url or f"sqlite:///{self.bt_data_dir / 'raw.db'}"
+        return self.bt_raw_database_url or f"sqlite:///{(self.bt_data_dir / 'raw.db').as_posix()}"
 
     @property
     def snapshot_dir(self) -> Path:
