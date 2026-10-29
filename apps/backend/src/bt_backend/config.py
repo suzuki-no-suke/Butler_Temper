@@ -4,6 +4,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # apps/backend/src/bt_backend/config.py から見たリポジトリのルート
@@ -24,10 +25,21 @@ class Settings(BaseSettings):
     bt_raw_database_url: str | None = None
     bt_cors_origins: list[str] = ["*"]
 
-    anthropic_api_key: str | None = None
-    openai_api_key: str | None = None
-    gemini_api_key: str | None = None
-    openrouter_api_key: str | None = None
+    # BT_ 付きの名前を優先する。Claude Code など、ANTHROPIC_API_KEY を自分で使う道具と
+    # 同じ環境で動かすときに、キーを取り違えないようにするため
+    anthropic_api_key: str | None = Field(
+        default=None, validation_alias=AliasChoices("BT_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
+    )
+    openai_api_key: str | None = Field(
+        default=None, validation_alias=AliasChoices("BT_OPENAI_API_KEY", "OPENAI_API_KEY")
+    )
+    gemini_api_key: str | None = Field(
+        default=None, validation_alias=AliasChoices("BT_GEMINI_API_KEY", "GEMINI_API_KEY")
+    )
+    openrouter_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BT_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
+    )
 
     @property
     def database_url(self) -> str:
