@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext, useParams } from 'react-router'
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router'
 import { api, type BotDetail } from '../api'
 import AgentInfo from '../components/AgentInfo'
 import SettingsChat from '../components/SettingsChat'
@@ -9,6 +9,7 @@ import type { BotsContext } from './BotsLayout'
 export default function BotDetailPage() {
   const botId = Number(useParams().botId)
   const { agents, reloadBots } = useOutletContext<BotsContext>()
+  const navigate = useNavigate()
   const [bot, setBot] = useState<BotDetail | null>(null)
   const [name, setName] = useState('')
   // 画面上の「編集中の設定」。保存するまで DB には書かない
@@ -56,23 +57,28 @@ export default function BotDetailPage() {
     setMessage('Agent の既定の設定を編集中の設定に読み込みました（まだ保存していません）')
   }
 
-  const rename = async () => {
-    setError(null)
-    try {
-      setBot(await api.renameBot(bot.id, name))
-      reloadBots()
-      setMessage('名前を変更しました')
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
-
   const save = async () => {
     setError(null)
     setMessage(null)
     const parsed = parseSettings(draft)
     if (!parsed.ok) {
       setError(parsed.error)
+      return
+    }
+    if (forking) {
+      try {
+        const forked = await api.forkBot(bot.id, {
+          name: name.trim(),
+          settings: parsed.settings,
+          note,
+          base_version: baseVersion,
+        })
+        reloadBots()
+        setNote('')
+        navigate(`/bots/${forked.id}`)
+      } catch (e) {
+        setError((e as Error).message)
+      }
       return
     }
     try {
@@ -88,15 +94,32 @@ export default function BotDetailPage() {
   }
 
   const viewed = bot.versions.find((v) => v.version === viewing)
+  // 名前を変えて保存すると、新しい BOT として分かれる（フォーク）
+  const forking = name.trim() !== '' && name.trim() !== bot.name
 
   return (
     <div className="page bot-detail">
       <div className="name-row">
         <input value={name} onChange={(e) => setName(e.target.value)} aria-label="名前" />
-        <button type="button" onClick={rename} disabled={name === bot.name || name === ''}>
-          名前を変更
-        </button>
+        {forking && (
+          <button type="button" className="link" onClick={() => setName(bot.name)}>
+            名前を元に戻す
+          </button>
+        )}
       </div>
+      <p className="hint">
+        名前を変えて保存すると、この BOT はそのままに、新しい名前の BOT を v1 から作ります
+        （バージョンの履歴と会話は引き継ぎません）。
+      </p>
+      {bot.forked_from_bot_id && (
+        <p className="hint">
+          <Link to={`/bots/${bot.forked_from_bot_id}`}>
+            {bot.forked_from_bot_name ?? `BOT #${bot.forked_from_bot_id}`}
+          </Link>
+          {bot.forked_from_version !== null && ` のバージョン ${bot.forked_from_version}`}
+          から分かれた BOT です。
+        </p>
+      )}
       {bot.unavailable_reason && <p className="error">停止中: {bot.unavailable_reason}</p>}
       {agent ? <AgentInfo agent={agent} /> : <p className="error">{bot.agent_name}</p>}
 
@@ -123,7 +146,7 @@ export default function BotDetailPage() {
             </label>
             <div className="button-row">
               <button type="button" onClick={save}>
-                新しいバージョンとして保存
+                {forking ? `「${name.trim()}」として新しい BOT を作る` : '新しいバージョンとして保存'}
               </button>
               <button type="button" className="secondary" onClick={loadDefault} disabled={!agent}>
                 既定の設定を読み込む

@@ -32,16 +32,15 @@ def test_agents_have_description_and_defaults(client: TestClient) -> None:
     assert agent["default_settings"]["memory"]["recent_chars"] == 5000
 
 
-def test_bot_versions_and_rename(client: TestClient) -> None:
+def test_bot_versions(client: TestClient) -> None:
     bot_id = _create_bot(client)
     settings = client.get(f"/api/bots/{bot_id}").json()["versions"][0]["settings"]
     r = client.post(
         f"/api/bots/{bot_id}/versions", json={"settings": {**settings, "system_prompt": "v2"}}
     )
     assert r.json()["version"] == 2
-    client.patch(f"/api/bots/{bot_id}", json={"name": "新しい名前"})
     bot = client.get(f"/api/bots/{bot_id}").json()
-    assert bot["name"] == "新しい名前"
+    assert bot["name"] == "執事"
     assert bot["agent_name"] == "シンプル会話（Opus 5.5）"
     assert bot["latest_version"] == 2
     assert [v["settings"]["system_prompt"] for v in bot["versions"]] == ["v1", "v2"]
@@ -235,3 +234,51 @@ def test_resume_is_refused_for_stopped_bot(
     conv = client.post("/api/conversations", json={"bot_id": bot_id}).json()
     client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "やあ"})
     assert client.post(f"/api/conversations/{conv['id']}/resume").status_code == 409
+
+
+def test_fork_creates_new_bot_without_history(
+    client: TestClient, llm: Callable[[Handler], None]
+) -> None:
+    llm(lambda req: json_response(200, anthropic_message("はい")))
+    bot_id = _create_bot(client, system_prompt="v1")
+    settings = client.get(f"/api/bots/{bot_id}").json()["versions"][0]["settings"]
+    client.post(
+        f"/api/bots/{bot_id}/versions", json={"settings": {**settings, "system_prompt": "v2"}}
+    )
+    conv = client.post("/api/conversations", json={"bot_id": bot_id}).json()
+    client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "やあ"})
+
+    r = client.post(
+        f"/api/bots/{bot_id}/fork",
+        json={
+            "name": "カスタム執事",
+            "settings": {**settings, "system_prompt": "custom"},
+            "note": "v2 から分岐",
+            "base_version": 2,
+        },
+    )
+    assert r.status_code == 200, r.text
+    fork = r.json()
+    assert fork["id"] != bot_id
+    assert fork["name"] == "カスタム執事"
+    assert fork["agent_id"] == "claude-simple-opus"
+    assert (fork["forked_from_bot_id"], fork["forked_from_bot_name"]) == (bot_id, "執事")
+    assert fork["forked_from_version"] == 2
+    # バージョンは v1 から始まり、元の BOT の履歴は引き継がない
+    assert [(v["version"], v["settings"]["system_prompt"]) for v in fork["versions"]] == [
+        (1, "custom")
+    ]
+    assert client.get(f"/api/conversations?bot_id={fork['id']}").json() == []
+    # 元の BOT はそのまま
+    origin = client.get(f"/api/bots/{bot_id}").json()
+    assert (origin["name"], origin["latest_version"]) == ("執事", 2)
+
+
+def test_fork_requires_new_name_and_valid_settings(client: TestClient) -> None:
+    bot_id = _create_bot(client)
+    settings = client.get(f"/api/bots/{bot_id}").json()["versions"][0]["settings"]
+    r = client.post(f"/api/bots/{bot_id}/fork", json={"name": "執事", "settings": settings})
+    assert r.status_code == 400
+    r = client.post(f"/api/bots/{bot_id}/fork", json={"name": "別名", "settings": {"typo": 1}})
+    assert r.status_code == 400
+    assert len(client.get("/api/bots").json()) == 1

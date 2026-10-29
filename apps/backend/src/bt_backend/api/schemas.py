@@ -19,8 +19,12 @@ class BotCreate(BaseModel):
     note: str = ""
 
 
-class BotUpdate(BaseModel):
+class BotFork(BaseModel):
     name: str = Field(min_length=1)
+    settings: dict[str, Any]
+    note: str = ""
+    # 編集の元にしたバージョン（既定の設定から作った場合などは None）
+    base_version: int | None = None
 
 
 class VersionCreate(BaseModel):
@@ -42,6 +46,9 @@ class BotOut(BaseModel):
     agent_id: str
     agent_name: str
     unavailable_reason: str | None
+    forked_from_bot_id: int | None
+    forked_from_bot_name: str | None = None
+    forked_from_version: int | None
     created_at: datetime
     latest_version: int | None
 

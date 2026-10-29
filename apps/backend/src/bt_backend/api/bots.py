@@ -14,8 +14,8 @@ from bt_backend.api.schemas import (
     AgentOut,
     BotCreate,
     BotDetail,
+    BotFork,
     BotOut,
-    BotUpdate,
     VersionCreate,
     VersionOut,
 )
@@ -39,9 +39,11 @@ def _agent_name(agent_id: str) -> str:
 
 def _bot_out(session: Session, bot: Bot) -> BotOut:
     assert bot.id is not None
+    origin = session.get(Bot, bot.forked_from_bot_id) if bot.forked_from_bot_id else None
     return BotOut(
         **bot.model_dump(),
         agent_name=_agent_name(bot.agent_id),
+        forked_from_bot_name=origin.name if origin else None,
         latest_version=_latest_version(session, bot.id),
     )
 
@@ -95,15 +97,32 @@ def get_bot(bot_id: int, session: SessionDep) -> BotDetail:
     )
 
 
-@router.patch("/bots/{bot_id}")
-def update_bot(bot_id: int, body: BotUpdate, session: SessionDep) -> BotDetail:
-    bot = session.get(Bot, bot_id)
-    if bot is None:
+@router.post("/bots/{bot_id}/fork")
+def fork_bot(bot_id: int, body: BotFork, session: SessionDep) -> BotDetail:
+    """名前を変えて保存する。元の BOT はそのままに、同じ Agent の新しい BOT を v1 から作る。
+
+    元の BOT のバージョンや会話は引き継がない。どこから分かれたかだけを記録する。
+    """
+    origin = session.get(Bot, bot_id)
+    if origin is None:
         raise HTTPException(404, "BOT が見つかりません")
-    bot.name = body.name
+    if body.name == origin.name:
+        raise HTTPException(
+            400, "名前を変えずに保存する場合は、新しいバージョンとして保存してください"
+        )
+    _validate(origin.agent_id, body.settings)
+    bot = Bot(
+        name=body.name,
+        agent_id=origin.agent_id,
+        forked_from_bot_id=bot_id,
+        forked_from_version=body.base_version,
+    )
     session.add(bot)
+    session.flush()
+    assert bot.id is not None
+    session.add(BotVersion(bot_id=bot.id, version=1, settings=body.settings, note=body.note))
     session.commit()
-    return get_bot(bot_id, session)
+    return get_bot(bot.id, session)
 
 
 @router.post("/bots/{bot_id}/versions")

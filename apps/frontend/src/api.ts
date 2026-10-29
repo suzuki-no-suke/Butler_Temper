@@ -26,6 +26,9 @@ export interface Bot {
   agent_id: string
   agent_name: string
   unavailable_reason: string | null
+  forked_from_bot_id: number | null
+  forked_from_bot_name: string | null
+  forked_from_version: number | null
   created_at: string
   latest_version: number | null
 }
@@ -157,8 +160,10 @@ export const api = {
   bot: (id: number) => request<BotDetail>(`/api/bots/${id}`),
   createBot: (body: { name: string; agent_id: string; settings: Settings; note: string }) =>
     post<BotDetail>('/api/bots', body),
-  renameBot: (botId: number, name: string) =>
-    request<BotDetail>(`/api/bots/${botId}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  forkBot: (
+    botId: number,
+    body: { name: string; settings: Settings; note: string; base_version: number | null },
+  ) => post<BotDetail>(`/api/bots/${botId}/fork`, body),
   createVersion: (botId: number, body: { settings: Settings; note: string }) =>
     post<Version>(`/api/bots/${botId}/versions`, body),
   conversations: (botId?: number) =>

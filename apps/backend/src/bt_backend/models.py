@@ -18,6 +18,10 @@ class Bot(SQLModel, table=True):
     agent_id: str = Field(sa_column_kwargs={"server_default": ""})
     # モデルが存在しなくなった等で実行を止めている理由
     unavailable_reason: str | None = None
+    # 名前を変えて保存（フォーク）した場合の元の BOT と、編集の元にしたバージョン。
+    # 記録のためだけに持ち、元の BOT のバージョンや会話は引き継がない
+    forked_from_bot_id: int | None = Field(default=None, foreign_key="bot.id")
+    forked_from_version: int | None = None
     created_at: datetime = Field(default_factory=utcnow)
 
 
