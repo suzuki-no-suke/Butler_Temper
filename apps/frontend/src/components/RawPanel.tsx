@@ -76,6 +76,24 @@ export default function RawPanel({ message }: { message: Message | null }) {
       <p className="hint">発言 #{message.seq + 1}（{message.role === 'error' ? 'エラー' : 'BOT'}）の記録</p>
       {error && <p className="error">{error}</p>}
 
+      {message.role === 'assistant' && (
+        <details open>
+          <summary>この発言への評価・コメント</summary>
+          {message.comment ? (
+            <p className="raw-comment">
+              <span className={`rating-badge rating-${message.comment.rating.toLowerCase()}`}>
+                {message.comment.rating}
+              </span>
+              <span className="comment-text">{message.comment.text || '（コメントなし）'}</span>
+              <br />
+              <small>{new Date(message.comment.updated_at).toLocaleString('ja-JP')}</small>
+            </p>
+          ) : (
+            <p className="hint">まだ評価していません</p>
+          )}
+        </details>
+      )}
+
       <details open>
         <summary>Agent の状態（このターンの後）</summary>
         {message.agent_state && Object.keys(message.agent_state).length > 0 ? (

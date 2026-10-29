@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { api, type Bot, type Conversation, type ConversationDetail, type MessageComment } from '../api'
 import ConversationComments from '../components/ConversationComments'
+import EvaluationSummary from '../components/EvaluationSummary'
 import MessageCommentEditor from '../components/MessageCommentEditor'
 import RawPanel from '../components/RawPanel'
 
@@ -247,6 +248,13 @@ export default function ChatPage() {
                 </button>
               </form>
             )}
+            <EvaluationSummary
+              messages={current.messages}
+              onSelect={(id) => {
+                setRawMessageId(id)
+                setRawOpen(true)
+              }}
+            />
             <ConversationComments
               conversationId={current.id}
               comments={current.comments}

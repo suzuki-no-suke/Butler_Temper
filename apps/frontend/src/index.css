@@ -582,3 +582,32 @@ button.raw-select {
     padding-left: 0;
   }
 }
+
+.evaluation-summary ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evaluation-summary li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.evaluation-counts {
+  display: flex;
+  gap: 14px;
+}
+
+.evaluation-target {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+.raw-comment {
+  margin: 4px 0;
+}
