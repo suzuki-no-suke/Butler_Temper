@@ -21,33 +21,23 @@ BT_ANTHROPIC_API_KEY=...
 # BT_OPENROUTER_API_KEY=...
 ```
 
-2. 依存ライブラリを入れる
+2. 依存ライブラリを入れる（リポジトリ直下で実行。Frontend の分も一緒に入る。Python 側は起動時に uv が自動で入れる）
 
 ```bash
-cd apps/backend && uv sync
+npm install
 ```
+
+3. 起動する（リポジトリ直下で実行）
 
 ```bash
-cd apps/frontend && npm install
+npm run dev
 ```
 
-3. DB を作る（リポジトリ直下で実行。data フォルダに作られる）
+- DB のマイグレーション（data フォルダに作成・更新）をしてから、Backend（http://localhost:8000）と Frontend（http://localhost:5173）を同時に起動する
+- Ctrl+C で両方とも止まる
+- 片方だけ起動するときは `npm run dev:backend` / `npm run dev:frontend`、マイグレーションだけなら `npm run migrate`
 
-```bash
-npm run migrate
-```
-
-4. Backend と Frontend を起動する（それぞれ別の端末で、リポジトリ直下で実行）
-
-```bash
-npm run dev:backend
-```
-
-```bash
-npm run dev:frontend
-```
-
-5. ブラウザで http://localhost:5173/ を開く
+4. ブラウザで http://localhost:5173/ を開く
 
 
 # 設定（環境変数）
