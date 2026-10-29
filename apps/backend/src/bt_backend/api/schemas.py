@@ -77,7 +77,12 @@ class ConversationOut(BaseModel):
     title: str
     status: str
     agent_state: dict[str, Any] | None
+    resumed_from_id: int | None
     created_at: datetime
+    message_count: int
+    # 最初の利用者の発言（一覧での見分け用）
+    preview: str
+    last_message_at: datetime | None
 
 
 class ConversationDetail(ConversationOut):

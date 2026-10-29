@@ -40,7 +40,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'error'
   content: string
   raw_call_id: number | null
-  parts: { speaker: string; text: string }[] | null
+  parts: { speaker: string; text: string; secret?: string }[] | null
   agent_state: Record<string, unknown> | null
   created_at: string
 }
@@ -53,7 +53,11 @@ export interface Conversation {
   title: string
   status: 'active' | 'stopped'
   agent_state: Record<string, unknown> | null
+  resumed_from_id: number | null
   created_at: string
+  message_count: number
+  preview: string
+  last_message_at: string | null
 }
 
 export interface ConversationDetail extends Conversation {
@@ -100,6 +104,7 @@ export const api = {
   conversation: (id: number) => request<ConversationDetail>(`/api/conversations/${id}`),
   createConversation: (botId: number) =>
     post<Conversation>('/api/conversations', { bot_id: botId }),
+  resumeConversation: (id: number) => post<Conversation>(`/api/conversations/${id}/resume`, {}),
   sendMessage: (conversationId: number, content: string) =>
     post<Message[]>(`/api/conversations/${conversationId}/messages`, { content }),
 }

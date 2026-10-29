@@ -340,3 +340,70 @@ pre.error {
 .chat-input button {
   white-space: nowrap;
 }
+
+.filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 320px;
+  margin-bottom: 12px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 900px;
+}
+
+.history-item {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 14px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.history-preview {
+  white-space: pre-wrap;
+}
+
+.history-meta {
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+.badge {
+  font-size: 0.8em;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 8px;
+  color: var(--muted);
+}
+
+.badge.error {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.stopped {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.stopped p {
+  margin: 0;
+}

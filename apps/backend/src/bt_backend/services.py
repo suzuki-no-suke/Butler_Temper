@@ -34,6 +34,50 @@ def messages_of(session: Session, conversation_id: int) -> list[Message]:
     )
 
 
+def resume_conversation(session: Session, conversation: Conversation) -> Conversation:
+    """会話を続けるための会話を返す。
+
+    止まっていない会話はそのまま返す。エラーで止まった会話は、同じ BOT 設定のバージョンで
+    新しい会話を作り、エラーより前のやり取り（応答を得られなかった最後の発言は除く）と
+    Agent の状態を引き継ぐ。
+    """
+    if conversation.status == "active":
+        return conversation
+    bot = session.get(Bot, conversation.bot_id)
+    assert bot is not None and conversation.id is not None
+    if bot.unavailable_reason:
+        raise ConversationClosed(f"この BOT は停止しています: {bot.unavailable_reason}")
+
+    kept = [m for m in messages_of(session, conversation.id) if m.role in ("user", "assistant")]
+    while kept and kept[-1].role == "user":
+        kept.pop()
+    resumed = Conversation(
+        bot_id=conversation.bot_id,
+        bot_version_id=conversation.bot_version_id,
+        resumed_from_id=conversation.id,
+        agent_state=next((m.agent_state for m in reversed(kept) if m.agent_state), None),
+    )
+    session.add(resumed)
+    session.flush()
+    assert resumed.id is not None
+    for seq, m in enumerate(kept):
+        session.add(
+            Message(
+                conversation_id=resumed.id,
+                seq=seq,
+                role=m.role,
+                content=m.content,
+                raw_call_id=m.raw_call_id,
+                parts=m.parts,
+                agent_state=m.agent_state,
+                created_at=m.created_at,
+            )
+        )
+    session.commit()
+    session.refresh(resumed)
+    return resumed
+
+
 def send_message(
     session: Session, raw_session: Session, conversation: Conversation, content: str
 ) -> list[Message]:

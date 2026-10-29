@@ -40,6 +40,8 @@ class Conversation(SQLModel, table=True):
     title: str = ""
     # active / stopped（エラーで停止）
     status: str = "active"
+    # エラーで止まった会話を引き継いで作った場合の、元の会話
+    resumed_from_id: int | None = Field(default=None, foreign_key="conversation.id")
     # Agent の状態（メモリなど）。Agent が自分で保存する
     agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)

@@ -57,6 +57,17 @@ export default function ChatPage() {
     }
   }
 
+  const resume = async () => {
+    if (!current) return
+    setError(null)
+    try {
+      const c = await api.resumeConversation(current.id)
+      navigate(`/chat/${c.id}`)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   const send = async (e: FormEvent) => {
     e.preventDefault()
     if (!current || input.trim() === '') return
@@ -128,13 +139,21 @@ export default function ChatPage() {
             <h2>
               {current.bot_name}（バージョン {current.bot_version}）の会話 #{current.id}
             </h2>
+            {current.resumed_from_id && (
+              <p className="hint">
+                会話 #{current.resumed_from_id} を引き継いだ会話です。
+              </p>
+            )}
             <ol className="messages">
               {current.messages.map((m) => (
                 <li key={m.id} className="message-group">
                   {m.parts ? (
                     m.parts.map((p, i) => (
                       <div key={i} className={`message assistant speaker-${p.speaker}`}>
-                        <div className="message-role">{SPEAKER_LABEL[p.speaker] ?? p.speaker}</div>
+                        <div className="message-role">
+                          {SPEAKER_LABEL[p.speaker] ?? p.speaker}
+                          {p.secret && `：${p.secret}`}
+                        </div>
                         <div className="message-content">{p.text}</div>
                       </div>
                     ))
@@ -154,7 +173,15 @@ export default function ChatPage() {
               ))}
             </ol>
             {current.status === 'stopped' ? (
-              <p className="error">この会話はエラーで停止しています。新しい会話を始めてください。</p>
+              <div className="stopped">
+                <p className="error">この会話はエラーで停止しています。</p>
+                <button type="button" onClick={resume}>
+                  引き継いで続ける
+                </button>
+                <p className="hint">
+                  エラーより前のやり取りを引き継いだ新しい会話を、同じ BOT 設定のバージョンで始めます。
+                </p>
+              </div>
             ) : (
               <form className="chat-input" onSubmit={send}>
                 <textarea

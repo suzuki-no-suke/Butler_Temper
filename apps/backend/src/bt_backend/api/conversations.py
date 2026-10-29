@@ -12,16 +12,33 @@ from bt_backend.api.schemas import (
 from bt_backend.db import RawSessionDep, SessionDep
 from bt_backend.models import Bot, BotVersion, Conversation, Message
 from bt_backend.raw_models import RawCall
-from bt_backend.services import ConversationClosed, messages_of, send_message
+from bt_backend.services import (
+    ConversationClosed,
+    messages_of,
+    resume_conversation,
+    send_message,
+)
 
 router = APIRouter(prefix="/api", tags=["conversations"])
+
+
+PREVIEW_CHARS = 80
 
 
 def _conversation_out(session: Session, c: Conversation) -> ConversationOut:
     bot = session.get(Bot, c.bot_id)
     version = session.get(BotVersion, c.bot_version_id)
-    assert bot is not None and version is not None
-    return ConversationOut(**c.model_dump(), bot_name=bot.name, bot_version=version.version)
+    assert bot is not None and version is not None and c.id is not None
+    messages = messages_of(session, c.id)
+    first_user = next((m.content for m in messages if m.role == "user"), "")
+    return ConversationOut(
+        **c.model_dump(),
+        bot_name=bot.name,
+        bot_version=version.version,
+        message_count=len(messages),
+        preview=first_user[:PREVIEW_CHARS],
+        last_message_at=messages[-1].created_at if messages else None,
+    )
 
 
 def _message_out(m: Message) -> MessageOut:
@@ -62,6 +79,16 @@ def create_conversation(body: ConversationCreate, session: SessionDep) -> Conver
     session.commit()
     session.refresh(c)
     return _conversation_out(session, c)
+
+
+@router.post("/conversations/{conversation_id}/resume")
+def resume(conversation_id: int, session: SessionDep) -> ConversationOut:
+    """会話を続ける。止まっていない会話はそのまま、エラーで止まった会話は引き継いだ新しい会話を返す。"""
+    c = _get_conversation(session, conversation_id)
+    try:
+        return _conversation_out(session, resume_conversation(session, c))
+    except ConversationClosed as e:
+        raise HTTPException(409, str(e)) from e
 
 
 @router.get("/conversations/{conversation_id}")

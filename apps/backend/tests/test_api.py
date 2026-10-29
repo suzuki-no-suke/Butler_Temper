@@ -106,7 +106,10 @@ def test_secret_keeper_parts_and_state_are_saved(
         body = json.loads(req.content)
         if body["model"] == "claude-opus-5-5":
             return json_response(200, anthropic_message("執事です"))
-        judge = '{"disclose": true, "reason": "r", "message": "影です"}'
+        judge = json.dumps(
+            {"results": {"金庫": {"disclose": True, "reason": "r", "message": "影です"}}},
+            ensure_ascii=False,
+        )
         return json_response(200, anthropic_message(judge, "claude-haiku-5-5"))
 
     llm(handler)
@@ -120,8 +123,8 @@ def test_secret_keeper_parts_and_state_are_saved(
     reply = detail["messages"][1]
     assert reply["content"] == "執事です"
     assert [p["speaker"] for p in reply["parts"]] == ["main", "sub"]
-    assert detail["agent_state"]["disclosed"] is True
-    assert reply["agent_state"]["disclosed"] is True
+    assert detail["agent_state"]["disclosed"] == ["金庫"]
+    assert reply["agent_state"]["disclosed"] == ["金庫"]
 
 
 def test_error_stops_conversation(client: TestClient, llm: Callable[[Handler], None]) -> None:
@@ -154,3 +157,81 @@ def test_seed_creates_one_bot_per_agent_only_once(client: TestClient) -> None:
     assert seed() == 0
     names = {b["agent_id"] for b in client.get("/api/bots").json()}
     assert "secret-keeper" in names
+
+
+def test_conversation_list_has_preview_and_count(
+    client: TestClient, llm: Callable[[Handler], None]
+) -> None:
+    llm(lambda req: json_response(200, anthropic_message("はい")))
+    bot_id = _create_bot(client)
+    conv = client.post("/api/conversations", json={"bot_id": bot_id}).json()
+    client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "最初の発言"})
+    [listed] = client.get("/api/conversations").json()
+    assert listed["preview"] == "最初の発言"
+    assert listed["message_count"] == 2
+    assert listed["last_message_at"] is not None
+
+
+def test_resume_active_conversation_returns_itself(client: TestClient) -> None:
+    bot_id = _create_bot(client)
+    conv = client.post("/api/conversations", json={"bot_id": bot_id}).json()
+    resumed = client.post(f"/api/conversations/{conv['id']}/resume").json()
+    assert resumed["id"] == conv["id"]
+
+
+def test_resume_stopped_conversation_copies_history(
+    client: TestClient, llm: Callable[[Handler], None]
+) -> None:
+    replies = iter(
+        [
+            json_response(200, anthropic_message("一つ目の応答")),
+            json_response(500, {"type": "error", "error": {"type": "api_error"}}),
+            json_response(200, anthropic_message("再開後の応答")),
+        ]
+    )
+    sent: list[list[dict[str, str]]] = []
+
+    def handler(req: httpx2.Request) -> httpx2.Response:
+        sent.append(json.loads(req.content)["messages"])
+        return next(replies)
+
+    llm(handler)
+    bot_id = _create_bot(client)
+    conv = client.post("/api/conversations", json={"bot_id": bot_id}).json()
+    client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "一つ目"})
+    client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "二つ目"})
+    assert client.get(f"/api/conversations/{conv['id']}").json()["status"] == "stopped"
+    # 止まった後に BOT 設定を変えても、引き継いだ会話は元のバージョンのまま
+    settings = client.get(f"/api/bots/{bot_id}").json()["versions"][0]["settings"]
+    client.post(
+        f"/api/bots/{bot_id}/versions", json={"settings": {**settings, "system_prompt": "v2"}}
+    )
+
+    resumed = client.post(f"/api/conversations/{conv['id']}/resume").json()
+    assert resumed["id"] != conv["id"]
+    assert resumed["resumed_from_id"] == conv["id"]
+    assert resumed["status"] == "active"
+    assert resumed["bot_version"] == 1
+    detail = client.get(f"/api/conversations/{resumed['id']}").json()
+    # 応答を得られなかった発言とエラーは引き継がない
+    assert [(m["role"], m["content"]) for m in detail["messages"]] == [
+        ("user", "一つ目"),
+        ("assistant", "一つ目の応答"),
+    ]
+    r = client.post(f"/api/conversations/{resumed['id']}/messages", json={"content": "三つ目"})
+    assert r.status_code == 200, r.text
+    assert sent[-1] == [
+        {"role": "user", "content": "一つ目"},
+        {"role": "assistant", "content": "一つ目の応答"},
+        {"role": "user", "content": "三つ目"},
+    ]
+
+
+def test_resume_is_refused_for_stopped_bot(
+    client: TestClient, llm: Callable[[Handler], None]
+) -> None:
+    llm(lambda req: json_response(404, anthropic_not_found()))
+    bot_id = _create_bot(client)
+    conv = client.post("/api/conversations", json={"bot_id": bot_id}).json()
+    client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "やあ"})
+    assert client.post(f"/api/conversations/{conv['id']}/resume").status_code == 409
