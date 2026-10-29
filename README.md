@@ -47,7 +47,7 @@ npm run dev
 - `BT_RAW_DATABASE_URL` : RAW 用の DB（既定は `sqlite:///<BT_DATA_DIR>/raw.db`）
 - `BT_CORS_ORIGINS` : Frontend の配信元（JSON の配列。既定は `["*"]`）
 - `BT_ENV_FILE` : 読み込む env ファイル（既定は secrets/secrets.env）
-- `BT_ANTHROPIC_API_KEY` / `BT_OPENAI_API_KEY` / `BT_GEMINI_API_KEY` / `BT_OPENROUTER_API_KEY`
+- `BT_ANTHROPIC_API_KEY` / `BT_OPENAI_API_KEY` / `BT_GEMINI_API_KEY` / `BT_OPENROUTER_API_KEY` / `BT_TYPESAFE_API_KEY`
   - `BT_` の無い名前（`ANTHROPIC_API_KEY` など）も読む。両方あれば `BT_` 付きを使う
   - Claude Code など、`ANTHROPIC_API_KEY` を自分で使う道具と同じ環境では `BT_` 付きを使う
 - Frontend の `VITE_API_BASE` : Backend の URL（ビルド時に指定。既定は http://localhost:8000）
@@ -60,3 +60,9 @@ npm run check
 ```
 
 Backend（ruff / mypy / pytest）、Frontend（tsc / oxlint / Vitest）、マイグレーションの差分を確かめる。
+
+LLM API への疎通（設定されている API キーごとに、モデル一覧の取得と最小の呼び出し）は次で確かめる。実際に API を呼ぶので、少額の料金がかかる。
+
+```bash
+npm run check:connectivity
+```

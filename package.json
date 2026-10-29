@@ -9,9 +9,10 @@
     "migrate:check": "uv run --project apps/backend python apps/migrate/migrate.py check",
     "dev:backend": "uv run --project apps/backend uvicorn bt_backend.main:app --reload --reload-dir apps/backend/src --port 8000",
     "dev:frontend": "npm --prefix apps/frontend run dev",
-    "check:backend": "cd apps/backend && uv run ruff check src tests ../migrate && uv run ruff format --check src tests ../migrate && uv run mypy src tests && uv run pytest -q",
+    "check:backend": "cd apps/backend && uv run ruff check src tests ../migrate ../../tools && uv run ruff format --check src tests ../migrate ../../tools && uv run mypy src tests && uv run pytest -q",
     "check:frontend": "cd apps/frontend && npm run typecheck && npm run lint && npm test",
-    "check": "npm run check:backend && npm run check:frontend && npm run migrate:check"
+    "check": "npm run check:backend && npm run check:frontend && npm run migrate:check",
+    "check:connectivity": "uv run --project apps/backend python tools/check_connectivity.py"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

@@ -20,6 +20,7 @@ def api_keys() -> dict[str, str | None]:
         "openai": s.openai_api_key,
         "gemini": s.gemini_api_key,
         "openrouter": s.openrouter_api_key,
+        "typesafe": s.typesafe_api_key,
     }
 
 

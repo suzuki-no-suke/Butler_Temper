@@ -42,6 +42,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("BT_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
     )
+    typesafe_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BT_TYPESAFE_API_KEY", "TYPESAFE_API_KEY"),
+    )
 
     @property
     def database_url(self) -> str:

@@ -30,6 +30,10 @@ def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     monkeypatch.setenv("BT_ENV_FILE", str(tmp_path / "none.env"))
     for key in ("BT_DATABASE_URL", "BT_RAW_DATABASE_URL"):
         monkeypatch.delenv(key, raising=False)
+    # 実行環境にある本物のキーを使わない
+    for name in ("ANTHROPIC", "OPENAI", "GEMINI", "OPENROUTER", "TYPESAFE"):
+        monkeypatch.delenv(f"BT_{name}_API_KEY", raising=False)
+        monkeypatch.delenv(f"{name}_API_KEY", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     _clear_caches()
     import migrate

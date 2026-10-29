@@ -6,6 +6,7 @@ from typing import Any
 import anthropic
 import httpx2
 import openai
+import typesafe_sdk
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types as genai_types
@@ -26,6 +27,8 @@ class MissingApiKey(Exception):
 def is_not_found(e: Exception) -> bool:
     """モデルが存在しないことを表す例外か。"""
     if isinstance(e, anthropic.NotFoundError | openai.NotFoundError):
+        return True
+    if isinstance(e, typesafe_sdk.TypeSafeNotFoundError):
         return True
     return isinstance(e, genai_errors.ClientError) and e.code == 404
 
@@ -84,6 +87,30 @@ class LlmSession:
             return client.models.generate_content(**request)
 
         return self._call(label, call)
+
+    def typesafe(
+        self,
+        label: str,
+        model: str,
+        state: typesafe_sdk.Content,
+        questions: Mapping[str, typesafe_sdk.Question],
+    ) -> typesafe_sdk.SystemOneResponse:
+        """TypeSafe AI の System One（Jev など）に、状態と型付きの質問を送る。"""
+        key = self._key("typesafe")
+
+        def call(http: httpx2.Client) -> typesafe_sdk.SystemOneResponse:
+            # 記録した本文を読めるよう、圧縮はしない
+            client = typesafe_sdk.TypeSafeClient(
+                api_key=key,
+                model=model,
+                http_client=http,
+                retry=typesafe_sdk.RetryPolicy(max_retries=0),
+                compression=False,
+            )
+            return client.system_one(state=state, questions=questions)
+
+        result: typesafe_sdk.SystemOneResponse = self._call(label, call)
+        return result
 
 
 def anthropic_text(message: Any) -> str:

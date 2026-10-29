@@ -190,3 +190,77 @@ def test_llm_session_openrouter_and_gemini(llm: Callable[[Handler], None]) -> No
     assert [e["label"] for e in session.exchanges] == ["main", "sub"]
     assert session.exchanges[0]["request"]["temperature"] == 0.1
     assert "secret-" not in json.dumps(session.exchanges)
+
+
+class FakeRelayApi:
+    """Jev（TypeSafe）と Anthropic の両方に答える偽の API。"""
+
+    def __init__(self, probability: float) -> None:
+        self.probability = probability
+        self.calls: list[str] = []
+
+    def __call__(self, req: httpx2.Request) -> httpx2.Response:
+        body = json.loads(req.content)
+        if req.url.host == "api.typesafe.ai":
+            self.calls.append("judge")
+            answer = {"type": "noul", "noul": self.probability}
+            return json_response(
+                200,
+                {
+                    "model": "jev-1.13.0",
+                    "usage": {"input_tokens": 10, "output_tokens": 1},
+                    "answers": {"disclose": answer},
+                },
+            )
+        self.calls.append("main")
+        return json_response(200, anthropic_message("承知いたしました", body["model"]))
+
+
+RELAY_KEYS = {"anthropic": "secret-a", "typesafe": "secret-t"}
+
+
+def test_secret_relay_discloses_to_main(llm: Callable[[Handler], None]) -> None:
+    api = FakeRelayApi(0.93)
+    llm(api)
+    settings = _default("secret-relay")
+    outcome = run_turn("secret-relay", settings, _turns("ありがとう"), {}, RELAY_KEYS)
+    assert outcome.error is None, outcome.error
+    assert api.calls == ["judge", "main"]
+    assert outcome.state == {
+        "last_judge": {"probability": 0.93, "disclose": True},
+        "disclosed": True,
+    }
+    judge, main = outcome.exchanges
+    assert judge["label"] == "judge"
+    assert judge["url"] == "https://api.typesafe.ai/v1/systemone"
+    assert judge["request"]["state"] == {
+        "conversation": [{"speaker": "主人", "text": "ありがとう"}]
+    }
+    assert judge["request"]["questions"]["disclose"]["instructions"] == settings["condition"]
+    assert judge["response"]["answers"]["disclose"]["noul"] == 0.93
+    assert main["request"]["model"] == "claude-sonnet-5-5"
+    assert settings["secret"] in main["request"]["system"]
+    assert "secret-" not in json.dumps(outcome.exchanges)
+
+    # 開示後は判定しない
+    api.calls.clear()
+    history = _turns("ありがとう", "承知いたしました", "それで？")
+    outcome = run_turn("secret-relay", settings, history, outcome.state, RELAY_KEYS)
+    assert api.calls == ["main"]
+    assert settings["secret"] in outcome.exchanges[0]["request"]["system"]
+
+
+def test_secret_relay_below_threshold_keeps_secret(llm: Callable[[Handler], None]) -> None:
+    llm(FakeRelayApi(0.4))
+    settings = _default("secret-relay")
+    outcome = run_turn("secret-relay", settings, _turns("こんにちは"), {}, RELAY_KEYS)
+    assert outcome.error is None, outcome.error
+    assert outcome.state["last_judge"] == {"probability": 0.4, "disclose": False}
+    assert "disclosed" not in outcome.state
+    assert settings["secret"] not in outcome.exchanges[1]["request"]["system"]
+
+
+def test_secret_relay_requires_typesafe_key() -> None:
+    outcome = run_turn("secret-relay", _default("secret-relay"), _turns("x"), {}, KEYS)
+    assert outcome.error is not None
+    assert "typesafe" in outcome.error
