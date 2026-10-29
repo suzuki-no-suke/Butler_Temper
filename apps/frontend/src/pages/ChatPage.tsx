@@ -1,0 +1,164 @@
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useNavigate, useParams } from 'react-router'
+import { api, type Bot, type Conversation, type ConversationDetail } from '../api'
+
+const ROLE_LABEL = { user: 'あなた', assistant: 'BOT', error: 'エラー' } as const
+
+export default function ChatPage() {
+  const { conversationId } = useParams()
+  const navigate = useNavigate()
+  const [bots, setBots] = useState<Bot[]>([])
+  const [botId, setBotId] = useState<number | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [loaded, setCurrent] = useState<ConversationDetail | null>(null)
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.bots().then(setBots, (e: Error) => setError(e.message))
+  }, [])
+
+  // URL に会話 ID が無いときは、読み込み済みの会話を表示しない
+  const current = conversationId && loaded?.id === Number(conversationId) ? loaded : null
+
+  const loadConversations = useCallback((id: number) => {
+    api.conversations(id).then(setConversations, (e: Error) => setError(e.message))
+  }, [])
+
+  useEffect(() => {
+    if (!conversationId) return
+    api.conversation(Number(conversationId)).then(
+      (c) => {
+        setCurrent(c)
+        setBotId(c.bot_id)
+        loadConversations(c.bot_id)
+      },
+      (e: Error) => setError(e.message),
+    )
+  }, [conversationId, loadConversations])
+
+  const selectBot = (id: number | null) => {
+    setBotId(id)
+    setConversations([])
+    if (id !== null) loadConversations(id)
+    navigate('/chat')
+  }
+
+  const startConversation = async () => {
+    if (botId === null) return
+    setError(null)
+    try {
+      const c = await api.createConversation(botId)
+      navigate(`/chat/${c.id}`)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  const send = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!current || input.trim() === '') return
+    setSending(true)
+    setError(null)
+    try {
+      await api.sendMessage(current.id, input)
+      setInput('')
+      setCurrent(await api.conversation(current.id))
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const selectedBot = bots.find((b) => b.id === botId)
+
+  return (
+    <div className="chat-layout">
+      <aside className="sidebar">
+        <label>
+          BOT
+          <select
+            value={botId ?? ''}
+            onChange={(e) => selectBot(e.target.value === '' ? null : Number(e.target.value))}
+          >
+            <option value="">選択してください</option>
+            {bots.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+                {b.unavailable_reason ? '（停止中）' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selectedBot?.unavailable_reason && (
+          <p className="error">停止中: {selectedBot.unavailable_reason}</p>
+        )}
+        <button
+          type="button"
+          onClick={startConversation}
+          disabled={!selectedBot || !!selectedBot.unavailable_reason}
+        >
+          新しい会話
+        </button>
+        <ul className="conversation-list">
+          {conversations.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                className={c.id === current?.id ? 'link active' : 'link'}
+                onClick={() => navigate(`/chat/${c.id}`)}
+              >
+                #{c.id}（v{c.bot_version}）{c.status === 'stopped' ? ' 停止' : ''}
+                <small>{new Date(c.created_at).toLocaleString('ja-JP')}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      <section className="chat-main">
+        {error && <p className="error">{error}</p>}
+        {!current ? (
+          <p className="hint">BOT を選んで、新しい会話を始めるか、過去の会話を選んでください。</p>
+        ) : (
+          <>
+            <h2>
+              {current.bot_name}（バージョン {current.bot_version}）の会話 #{current.id}
+            </h2>
+            <ol className="messages">
+              {current.messages.map((m) => (
+                <li key={m.id} className={`message ${m.role}`}>
+                  <div className="message-role">{ROLE_LABEL[m.role]}</div>
+                  <div className="message-content">{m.content}</div>
+                </li>
+              ))}
+            </ol>
+            {current.status === 'stopped' ? (
+              <p className="error">この会話はエラーで停止しています。新しい会話を始めてください。</p>
+            ) : (
+              <form className="chat-input" onSubmit={send}>
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="メッセージを入力（Ctrl+Enter で送信）"
+                  rows={3}
+                  disabled={sending}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.currentTarget.form?.requestSubmit()
+                    }
+                  }}
+                />
+                <button type="submit" disabled={sending || input.trim() === ''}>
+                  {sending ? '応答待ち…' : '送信'}
+                </button>
+              </form>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  )
+}

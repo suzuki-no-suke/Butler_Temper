@@ -7,3 +7,9 @@ __pycache__
 *.pyc
 data
 /data/
+.venv
+node_modules
+dist
+.mypy_cache
+.ruff_cache
+.pytest_cache

@@ -1,0 +1,13 @@
+{
+  "name": "butler-temper",
+  "private": true,
+  "scripts": {
+    "migrate": "uv run --project apps/backend python apps/migrate/migrate.py upgrade",
+    "migrate:check": "uv run --project apps/backend python apps/migrate/migrate.py check",
+    "dev:backend": "uv run --project apps/backend uvicorn bt_backend.main:app --reload --port 8000",
+    "dev:frontend": "npm --prefix apps/frontend run dev",
+    "check:backend": "cd apps/backend && uv run ruff check src tests ../migrate && uv run ruff format --check src tests ../migrate && uv run mypy src tests && uv run pytest -q",
+    "check:frontend": "cd apps/frontend && npm run typecheck && npm run lint && npm test",
+    "check": "npm run check:backend && npm run check:frontend && npm run migrate:check"
+  }
+}
