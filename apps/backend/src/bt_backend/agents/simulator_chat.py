@@ -42,9 +42,9 @@ class SimulatorChatSettings(AgentSettings):
 
 
 def _block(block: Any) -> dict[str, Any]:
-    if block.type == "tool_use":
-        return {"type": "tool_use", "id": block.id, "name": block.name, "input": block.input}
-    return {"type": "text", "text": block.text}
+    # 思考のブロックも含め、受け取った内容をそのまま返す（ツールのやり取りの途中で落とさない）
+    dumped: dict[str, Any] = block.model_dump(mode="json", exclude_none=True)
+    return dumped
 
 
 def _json(value: Any) -> str:

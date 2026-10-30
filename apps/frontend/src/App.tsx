@@ -7,6 +7,8 @@ import ChatPage from './pages/ChatPage'
 import DialogueHistoryPage from './pages/DialogueHistoryPage'
 import DialoguePage from './pages/DialoguePage'
 import HistoryPage from './pages/HistoryPage'
+import SimulationRunsPage from './pages/SimulationRunsPage'
+import SimulatorsPage from './pages/SimulatorsPage'
 import TemplatesPage from './pages/TemplatesPage'
 
 export default function App() {
@@ -23,6 +25,9 @@ export default function App() {
           <NavLink to="/dialogue-history">対話履歴</NavLink>
           <NavLink to="/conversation-bots">会話用エージェント設定</NavLink>
           <NavLink to="/templates">テンプレート</NavLink>
+          <span className="nav-separator" />
+          <NavLink to="/simulators">シミュレータ</NavLink>
+          <NavLink to="/simulation-runs">シミュレーション履歴</NavLink>
         </nav>
       </header>
       <main className="app-main">
@@ -56,6 +61,10 @@ export default function App() {
           </Route>
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/:templateId" element={<TemplatesPage />} />
+          <Route path="/simulators" element={<SimulatorsPage />} />
+          <Route path="/simulators/:simulatorName" element={<SimulatorsPage />} />
+          <Route path="/simulation-runs" element={<SimulationRunsPage />} />
+          <Route path="/simulation-runs/:runId" element={<SimulationRunsPage />} />
         </Routes>
       </main>
     </HashRouter>

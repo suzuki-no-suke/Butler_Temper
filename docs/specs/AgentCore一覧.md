@@ -12,6 +12,7 @@ AgentCore 一覧
 - 秘匿ガチ系261030（himitoku-gachi-261030） : メイン・秘匿管理（Jev）・記憶管理・システムの四役。システムは規則と API からの割込み要求を、選んだ相手に伝える
 - 秘密開示系の三つは、秘密と開示条件の組を secrets に複数書ける
 - シンプル会話（claude-simple-fable / -opus / -sonnet / -haiku） : システムプロンプトだけを設定して会話する
+- シミュレータを使う会話（simulator-chat-sonnet） : システムプロンプトに書いた条件で、自分でシミュレータを呼んで会話する
 - 会話用エージェントの AgentCore は、Agent の AgentCore とは別に登録する（`# 会話用エージェントの AgentCore`）
   - 台本に沿って会話を続ける（conversation-script-sonnet / -opus） : テンプレート（台本）に沿って、相手の Agent との会話をできるだけ続ける
 - 各 AgentCore が受け付ける Agent 設定の項目と既定値は、コード（apps/backend/src/bt_backend/agents）が原本。Agent 設定画面で確認できる
@@ -146,6 +147,24 @@ AgentCore 一覧
 (決定経緯 : 2026-10-29, docs/decisions/2026-10-29-Agent方式.md)
 
 
+# シミュレータを使う会話（simulator-chat-sonnet）
+
+シミュレータを tool use のツールとして見せ、呼ぶかどうか・いつ呼ぶかを LLM に決めさせて会話する。呼ぶ条件はシステムプロンプトに書く。既定のプロンプトでは、執事が唐突に「引いていかない？」とおみくじやサイコロを勧め、主人がはっきり断らなければシミュレートする。
+
+## 細則
+
+- モデル : claude-sonnet-5-5
+- simulators に挙げたシミュレータをツールとして見せる。既定は omikuji / dice / dice_sum / llm のすべて
+- 応答が tool_use で止まったら、シミュレータを呼び、結果を tool_result として返して続きを得る。往復は max_tool_rounds（既定 4）まで。上限に達した回は、ツールを使わせずに応答させる
+  - ツールのやり取りの途中は、応答の内容（thinking ブロックを含む）をそのまま返す
+- 表示用の内訳には、メインの発言と、シミュレータの呼び出しと結果（speaker が simulation、実行記録の id 付き）を順に出す。シミュレータを呼ばなかったターンは内訳を持たない
+- 会話履歴に残るのは、メインの発言をつないだ文だけ。ツールのやり取りは次のターンに送らない
+- 直近 context_chars 文字（既定 40000）までの会話を毎回送る
+
+(決定経緯 : 2026-10-30, docs/decisions/2026-10-30-シミュレータ.md)
+(仕様: docs/specs/シミュレータ.md)
+
+
 # 会話用エージェントの AgentCore
 
 会話用エージェント（利用者役として Agent と会話する Agent）の AgentCore は、Agent の AgentCore とは混ぜずに、registry.py の CONVERSATION_AGENTS に登録する。会話用エージェントは人間と同じく発言の文だけを出すと約束しているので、そのための型（ConversationCore）で作る。
@@ -157,6 +176,7 @@ AgentCore 一覧
   - 発言が空ならエラーとして扱う
 - 会話用エージェントから見た会話では、自分の発言が assistant、相手の Agent の発言が user になる
 - テンプレートは SpeakContext.templates（名前 -> 本文）で渡る。`{{template:名前}}` を expand_templates で置き換える。置き換えは一度だけで、入れ子にしない
+- シミュレータは SpeakContext.simulators で呼べる。現状、呼ぶ会話用エージェントは無い（2026-10-30）
 
 (決定経緯 : 2026-10-30, docs/decisions/2026-10-30-会話用エージェント.md)
 

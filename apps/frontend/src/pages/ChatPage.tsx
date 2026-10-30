@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { api, type Bot, type Conversation, type ConversationDetail, type MessageComment } from '../api'
 import ConversationComments from '../components/ConversationComments'
 import EvaluationSummary from '../components/EvaluationSummary'
@@ -11,6 +11,7 @@ const SPEAKER_LABEL: Record<string, string> = {
   main: 'Agent（メイン）',
   sub: 'Agent（サブ）',
   system: 'システム',
+  simulation: 'シミュレータ',
 }
 
 export default function ChatPage() {
@@ -196,6 +197,11 @@ export default function ChatPage() {
                           {p.secret && `：${p.secret}`}
                         </div>
                         <div className="message-content">{p.text}</div>
+                        {p.simulation_run_id != null && (
+                          <Link to={`/simulation-runs/${p.simulation_run_id}`}>
+                            実行記録 #{p.simulation_run_id} を見る
+                          </Link>
+                        )}
                       </div>
                     ))
                   ) : (

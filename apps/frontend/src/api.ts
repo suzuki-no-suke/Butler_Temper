@@ -99,13 +99,21 @@ export interface RawCall {
   finished_at: string | null
 }
 
+// 表示用の内訳。speaker が simulation なら、シミュレータの呼び出しと結果（中身は実行記録にある）
+export interface MessagePart {
+  speaker: string
+  text: string
+  secret?: string
+  simulation_run_id?: number | null
+}
+
 export interface Message {
   id: number
   seq: number
   role: 'user' | 'assistant' | 'error'
   content: string
   raw_call_id: number | null
-  parts: { speaker: string; text: string; secret?: string }[] | null
+  parts: MessagePart[] | null
   agent_state: Record<string, unknown> | null
   created_at: string
   comment: MessageComment | null
@@ -253,7 +261,7 @@ export interface DialogueMessage {
   role: 'speech' | 'error'
   content: string
   raw_call_id: number | null
-  parts: { speaker: string; text: string; secret?: string }[] | null
+  parts: MessagePart[] | null
   agent_state: Record<string, unknown> | null
   created_at: string
   comment: MessageComment | null
@@ -293,6 +301,63 @@ export interface DialogueSettings {
   templates: (DialogueTemplate & { content: string })[]
 }
 
+export interface SimulatorParam {
+  name: string
+  // required（必須）/ optional（任意）/ global（指定不可。グローバル設定でのみ決める）
+  kind: 'required' | 'optional' | 'global'
+  description: string
+  global_key: string | null
+}
+
+export interface Simulator {
+  name: string
+  label: string
+  description: string
+  result_description: string
+  input_schema: Record<string, unknown>
+  params: SimulatorParam[]
+}
+
+export type SimulationCaller = 'conversation' | 'dialogue' | 'webui'
+
+export interface SimulationRun {
+  id: number
+  simulator: string
+  caller: SimulationCaller
+  conversation_id: number | null
+  message_id: number | null
+  dialogue_id: number | null
+  dialogue_message_id: number | null
+  agent_id: string
+  args: Record<string, unknown>
+  params: Record<string, unknown> | null
+  status: 'succeeded' | 'failed' | 'invalid'
+  result: Record<string, unknown> | null
+  detail: Record<string, unknown> | null
+  error_count: number
+  error: string | null
+  started_at: string
+  finished_at: string | null
+}
+
+export interface SimulationRawCall {
+  id: number
+  label: string
+  exchanges: RawExchange[]
+  error: string | null
+  created_at: string
+}
+
+export interface SimulationRunDetail extends SimulationRun {
+  raw_calls: SimulationRawCall[]
+}
+
+export interface SimulationSettings {
+  values: Record<string, unknown>
+  defaults: Record<string, unknown>
+  descriptions: Record<string, string>
+}
+
 export const api = {
   ...agentBotApi,
   conversations: (botId?: number) =>
@@ -325,4 +390,21 @@ export const api = {
   advanceDialogue: (id: number) => post<DialogueMessage[]>(`/api/dialogues/${id}/turn`, {}),
   resumeDialogue: (id: number) => post<Dialogue>(`/api/dialogues/${id}/resume`, {}),
   dialogueSettings: (id: number) => request<DialogueSettings>(`/api/dialogues/${id}/settings`),
+  simulators: () => request<Simulator[]>('/api/simulators'),
+  testRunSimulator: (name: string, args: Record<string, unknown>, times: number) =>
+    post<SimulationRun[]>(`/api/simulators/${name}/runs`, { args, times }),
+  simulationRuns: (filter: { simulator?: string; caller?: string } = {}) => {
+    const params = new URLSearchParams()
+    if (filter.simulator) params.set('simulator', filter.simulator)
+    if (filter.caller) params.set('caller', filter.caller)
+    const query = params.toString()
+    return request<SimulationRun[]>(`/api/simulation-runs${query ? `?${query}` : ''}`)
+  },
+  simulationRun: (id: number) => request<SimulationRunDetail>(`/api/simulation-runs/${id}`),
+  simulationSettings: () => request<SimulationSettings>('/api/simulation-settings'),
+  saveSimulationSettings: (values: Record<string, unknown>) =>
+    request<SimulationSettings>('/api/simulation-settings', {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    }),
 }

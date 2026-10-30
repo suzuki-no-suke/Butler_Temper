@@ -95,7 +95,8 @@ def test_llm_simulator_runs_and_merges(client: TestClient, llm: Callable[[Handle
     assert run["params"]["llm_concurrency"] == 5
     assert len(sent) == 4
     merge = sent[-1]
-    assert merge["tool_choice"] == {"type": "tool", "name": "submit_result"}
+    assert merge["tool_choice"] == {"type": "auto"}
+    assert merge["tools"][0]["name"] == "submit_result"
     assert "明日の天気" in merge["messages"][0]["content"]
 
     detail = client.get(f"/api/simulation-runs/{run['id']}").json()

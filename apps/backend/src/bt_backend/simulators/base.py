@@ -21,7 +21,7 @@ ParamKind = Literal["required", "optional", "global"]
 
 DEFAULT_MERGE_INSTRUCTION = """\
 次の「条件」で、同じシミュレートを別々に何回か行いました。その結果をすべて読み、
-全体としての結果を、submit_result の形式で提出してください。
+全体としての結果を、必ず submit_result ツールを呼んで提出してください。
 回ごとのばらつきや食い違いも、全体の結果として扱ってください。"""
 
 
@@ -114,6 +114,7 @@ class Simulator(ABC):
     def input_schema(self) -> dict[str, Any]:
         schema = self.args_model.model_json_schema()
         schema.pop("title", None)
+        schema.pop("description", None)
         return schema
 
     def params(self) -> list[ParamInfo]:

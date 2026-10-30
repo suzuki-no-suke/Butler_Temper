@@ -3,6 +3,7 @@
 1. 呼ぶ側が、プロンプト（シミュレートの条件）と、結果の形式（JSON Schema）を渡す
 2. 同じプロンプトで、別々に runs 回 LLM を呼ぶ（会話の文脈は持たせない）
 3. 最後の 1 回で、条件と各回の出力をすべてコンテキストに入れ、tool use で結果の形式にまとめる
+   （ツールを呼ぶことは指示で求める。呼ばなければ失敗とする）
 
 LLM 呼び出しのエラーは、その回だけをやり直さずに打ち切り、エラーとして数える。
 すべての回が失敗したとき（またはまとめる回が失敗したとき）だけ、全体を失敗とする。
@@ -132,7 +133,9 @@ class LlmSimulator(Simulator):
                             "input_schema": params["output_schema"],
                         }
                     ],
-                    "tool_choice": {"type": "tool", "name": RESULT_TOOL},
+                    # Claude 5 系の一部（Sonnet 5.5 など）は、ツールを強制する指定を受け付けない。
+                    # auto にし、指示で submit_result を呼ばせる
+                    "tool_choice": {"type": "auto"},
                 },
             )
             use = next((b for b in message.content if b.type == "tool_use"), None)

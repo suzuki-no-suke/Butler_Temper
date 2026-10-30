@@ -5,7 +5,7 @@ const json = (value: unknown) => JSON.stringify(value, null, 2)
 
 const time = (iso?: string | null) => (iso ? new Date(iso).toLocaleTimeString('ja-JP') : '—')
 
-function Exchange({ exchange, index }: { exchange: RawExchange; index: number }) {
+export function Exchange({ exchange, index }: { exchange: RawExchange; index: number }) {
   return (
     <div className="raw-exchange">
       <div className="raw-exchange-head">

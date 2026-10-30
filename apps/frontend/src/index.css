@@ -636,3 +636,9 @@ button.raw-select {
   width: 4em;
   margin-right: 4px;
 }
+
+.message.assistant.speaker-simulation {
+  border-style: dashed;
+  background: transparent;
+  font-size: 0.9em;
+}
