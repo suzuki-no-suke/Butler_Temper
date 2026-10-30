@@ -114,3 +114,120 @@ class SettingsChatMessage(SQLModel, table=True):
     # アシスタントが出した設定の変更案（変更しない場合は None）
     proposed_settings: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)
+
+
+# 会話用エージェント（ConversationAgent）。既存の Agent（Bot）とは別のテーブルに置き、
+# 互いに行き来しない（会話用エージェントが Agent になることも、その逆も無い）
+
+
+class ConversationBot(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    # 採用する会話用エージェントの AgentCore（コードで定義）
+    agent_id: str
+    unavailable_reason: str | None = None
+    forked_from_bot_id: int | None = Field(default=None, foreign_key="conversationbot.id")
+    forked_from_version: int | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ConversationBotVersion(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("bot_id", "version"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    bot_id: int = Field(foreign_key="conversationbot.id", index=True)
+    version: int
+    settings: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    note: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ConversationBotSettingsChatMessage(SQLModel, table=True):
+    """会話用エージェントごとの設定変更チャットの履歴。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    bot_id: int = Field(foreign_key="conversationbot.id", index=True)
+    role: str
+    content: str
+    proposed_settings: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Template(SQLModel, table=True):
+    """プロンプトに埋め込む文章（台本など）。中身はバージョンとして持つ。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    # プロンプトでは {{template:名前}} で参照する
+    name: str = Field(unique=True)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class TemplateVersion(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("template_id", "version"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    template_id: int = Field(foreign_key="template.id", index=True)
+    version: int
+    # 保存時にサニタイズした本文
+    content: str
+    note: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Dialogue(SQLModel, table=True):
+    """会話用エージェントと Agent のエージェント間対話。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    conversation_bot_id: int = Field(foreign_key="conversationbot.id", index=True)
+    # 開始時の会話用エージェントのバージョンに固定する
+    conversation_bot_version_id: int = Field(foreign_key="conversationbotversion.id")
+    bot_id: int = Field(foreign_key="bot.id", index=True)
+    # 開始時の Agent のバージョンに固定する
+    bot_version_id: int = Field(foreign_key="botversion.id")
+    # 開始時に固定したテンプレート（名前 -> TemplateVersion.id）
+    template_version_ids: dict[str, int] = Field(sa_column=Column(JSON, nullable=False))
+    # active / stopped（エラーで停止）
+    status: str = "active"
+    resumed_from_id: int | None = Field(default=None, foreign_key="dialogue.id")
+    # 会話用エージェントの状態と、Agent の状態。それぞれが自分で保存する
+    conversation_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class DialogueMessage(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    dialogue_id: int = Field(foreign_key="dialogue.id", index=True)
+    seq: int
+    # conversation（会話用エージェント）/ agent（Agent）
+    speaker: str
+    # speech（発言）/ error
+    role: str
+    content: str
+    raw_call_id: int | None = None
+    # 表示用の内訳（Agent の発言のみ。会話用エージェントは持たない）
+    parts: list[dict[str, Any]] | None = Field(default=None, sa_column=Column(JSON))
+    # このターンの後の、発言者の状態
+    agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class DialogueMessageComment(SQLModel, table=True):
+    """エージェント間対話の発言一つにつき一つの評価とコメント。どちらの発言にも付けられる。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    message_id: int = Field(foreign_key="dialoguemessage.id", unique=True)
+    rating: str
+    text: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class DialogueComment(SQLModel, table=True):
+    """エージェント間対話の全体へのコメント。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    dialogue_id: int = Field(foreign_key="dialogue.id", index=True)
+    rating: str | None = None
+    text: str = ""
+    created_at: datetime = Field(default_factory=utcnow)

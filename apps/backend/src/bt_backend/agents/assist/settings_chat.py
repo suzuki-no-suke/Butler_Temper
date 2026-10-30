@@ -18,7 +18,8 @@ from pydantic_ai.models import Model  # noqa: E402
 from pydantic_ai.models.anthropic import AnthropicModel  # noqa: E402
 from pydantic_ai.providers.anthropic import AnthropicProvider  # noqa: E402
 
-from bt_backend.agents.registry import AGENTS  # noqa: E402
+from bt_backend.agents.registry import AGENTS, CONVERSATION_AGENTS  # noqa: E402
+from bt_backend.agents.types import AgentInfo  # noqa: E402
 
 # 設定変更チャットに使うモデル。設定画面からは変えない
 SETTINGS_CHAT_MODEL = "claude-sonnet-5-5"
@@ -39,6 +40,13 @@ Agent は、AgentCore（モデルの選択と処理の流れ）と、それに�
 - 要望に関係しない項目は変えない
 """
 
+# 会話用エージェントの設定を調整するときに、INSTRUCTIONS の後ろに足す
+CONVERSATION_INSTRUCTIONS = """
+この Agent は「会話用エージェント」です。利用者役として、利用者が作った別の Agent と会話します。
+会話用エージェントの出力は、そのまま相手への発言になります（人間の発言と同じく、文だけを出す）。
+プロンプトには {{template:名前}} の形でテンプレート（台本など、別に保存した文章）を埋め込めます。
+"""
+
 
 class ChatLine(BaseModel):
     role: str
@@ -52,9 +60,13 @@ class SettingsProposal:
     settings: dict[str, Any] | None
 
 
-def _output_type(agent_id: str) -> type[BaseModel]:
+def _core(agent_id: str, conversation: bool) -> Any:
+    return (CONVERSATION_AGENTS if conversation else AGENTS)[agent_id]
+
+
+def _output_type(settings_model: type[BaseModel]) -> type[BaseModel]:
     # 出力の型を Agent ごとに組み立てるため、型検査では Any として扱う
-    optional_settings: Any = AGENTS[agent_id].settings_model | None
+    optional_settings: Any = settings_model | None
     output: type[BaseModel] = create_model(
         "SettingsProposal",
         reply=(str, Field(description="利用者への返答")),
@@ -66,8 +78,7 @@ def _output_type(agent_id: str) -> type[BaseModel]:
     return output
 
 
-def _prompt(agent_id: str, current_settings: str, history: list[ChatLine], request: str) -> str:
-    info = AGENTS[agent_id].info()
+def _prompt(info: AgentInfo, current_settings: str, history: list[ChatLine], request: str) -> str:
     lines = [f"{'利用者' if h.role == 'user' else 'アシスタント'}: {h.content}" for h in history]
     models = json.dumps(info.models, ensure_ascii=False)
     defaults = json.dumps(info.default_settings, ensure_ascii=False, indent=2)
@@ -89,20 +100,25 @@ def propose_settings(
     request: str,
     api_key: str | None,
     model: Model | None = None,
+    conversation: bool = False,
 ) -> SettingsProposal:
-    """要望から設定の変更案を作る。model はテストで差し替えるためのもの。"""
+    """要望から設定の変更案を作る。model はテストで差し替えるためのもの。
+
+    conversation が True なら、会話用エージェントの AgentCore として扱う。
+    """
+    core = _core(agent_id, conversation)
     if model is None:
         if not api_key:
             raise ValueError("anthropic の API キーが設定されていません")
         model = AnthropicModel(SETTINGS_CHAT_MODEL, provider=AnthropicProvider(api_key=api_key))
     ai = AiAgent(
         model,
-        output_type=_output_type(agent_id),
-        instructions=INSTRUCTIONS,
+        output_type=_output_type(core.settings_model),
+        instructions=INSTRUCTIONS + (CONVERSATION_INSTRUCTIONS if conversation else ""),
         retries=2,
         model_settings={"max_tokens": SETTINGS_CHAT_MAX_TOKENS},
     )
-    output: Any = ai.run_sync(_prompt(agent_id, current_settings, history, request)).output
+    output: Any = ai.run_sync(_prompt(core.info(), current_settings, history, request)).output
     settings = output.settings
     return SettingsProposal(
         reply=output.reply,

@@ -17,6 +17,8 @@ class RawBase(SQLModel, registry=registry()):
 class RawCall(RawBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     conversation_id: int | None = Field(default=None, index=True)
+    # エージェント間対話の記録なら、その Dialogue.id（conversation_id は None）
+    dialogue_id: int | None = Field(default=None, index=True)
     agent_id: str = Field(sa_column_kwargs={"server_default": ""})
     # Agents モジュールのソースのハッシュ（data/agent_snapshots/<hash>.zip）
     source_hash: str = Field(index=True)

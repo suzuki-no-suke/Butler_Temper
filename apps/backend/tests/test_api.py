@@ -152,8 +152,12 @@ def test_seed_creates_one_bot_per_agent_only_once(client: TestClient) -> None:
     from bt_backend.seed import seed
 
     created = seed()
-    assert created == len(client.get("/api/agents").json())
-    assert seed() == 0
+    assert created == {
+        "agents": len(client.get("/api/agents").json()),
+        "conversation_agents": len(client.get("/api/conversation-agents").json()),
+        "templates": 1,
+    }
+    assert seed() == {"agents": 0, "conversation_agents": 0, "templates": 0}
     names = {b["agent_id"] for b in client.get("/api/bots").json()}
     assert "secret-keeper" in names
 

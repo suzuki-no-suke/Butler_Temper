@@ -173,9 +173,97 @@ class ConversationDetail(ConversationOut):
 class RawCallOut(BaseModel):
     id: int
     conversation_id: int | None
+    dialogue_id: int | None
     agent_id: str
     source_hash: str
     exchanges: list[dict[str, Any]]
     error: str | None
     started_at: datetime
     finished_at: datetime | None
+
+
+class TemplateCreate(BaseModel):
+    name: str = Field(min_length=1, pattern=r"^[^{}\n]+$")
+    content: str
+    note: str = ""
+
+
+class TemplateVersionCreate(BaseModel):
+    content: str
+    note: str = ""
+
+
+class TemplateVersionOut(BaseModel):
+    id: int
+    version: int
+    content: str
+    note: str
+    created_at: datetime
+
+
+class TemplateOut(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    latest_version: int
+
+
+class TemplateDetail(TemplateOut):
+    versions: list[TemplateVersionOut]
+
+
+class DialogueCreate(BaseModel):
+    conversation_bot_id: int
+    bot_id: int
+
+
+class DialogueMessageOut(BaseModel):
+    id: int
+    seq: int
+    speaker: Literal["conversation", "agent"]
+    role: Literal["speech", "error"]
+    content: str
+    raw_call_id: int | None
+    parts: list[dict[str, Any]] | None
+    agent_state: dict[str, Any] | None
+    created_at: datetime
+    comment: MessageCommentOut | None = None
+
+
+class DialogueTemplateOut(BaseModel):
+    name: str
+    template_id: int
+    version: int
+
+
+class DialogueOut(BaseModel):
+    id: int
+    conversation_bot_id: int
+    conversation_bot_name: str
+    conversation_bot_version: int
+    bot_id: int
+    bot_name: str
+    bot_version: int
+    templates: list[DialogueTemplateOut]
+    status: str
+    resumed_from_id: int | None
+    created_at: datetime
+    message_count: int
+    # 最初の会話用エージェントの発言（一覧での見分け用）
+    preview: str
+    last_message_at: datetime | None
+
+
+class DialogueDetail(DialogueOut):
+    messages: list[DialogueMessageOut]
+    comments: list[ConversationCommentOut]
+
+
+class DialogueTemplateContentOut(DialogueTemplateOut):
+    content: str
+
+
+class DialogueSettingsOut(BaseModel):
+    conversation_bot: ConversationSettingsOut
+    bot: ConversationSettingsOut
+    templates: list[DialogueTemplateContentOut]
