@@ -125,7 +125,9 @@ class SecretRelayAgent(Agent[SecretRelaySettings]):
         pending = [s for s in settings.secrets if s.name not in disclosed]
         if pending:
             _, judged = split_by_chars(ctx.history, settings.judge.recent_chars)
-            probabilities = self._judge(ctx, pending, judged)
+            probabilities = judge_with_jev(
+                ctx, self.models["judge"], "judge", pending, conversation_state(judged)
+            )
             last_judge: dict[str, Any] = {}
             for s in pending:
                 threshold = settings.threshold if s.threshold is None else s.threshold
@@ -156,20 +158,24 @@ class SecretRelayAgent(Agent[SecretRelaySettings]):
         )
         return TurnResult(text=anthropic_text(message), state=state)
 
-    def _judge(
-        self, ctx: TurnContext, pending: list[RelaySecret], turns: list[ChatTurn]
-    ) -> dict[str, float]:
-        # 質問の名前は ASCII にしておき、秘密の名前とは対応表で結ぶ
-        keys = {f"secret_{i}": s for i, s in enumerate(pending)}
-        questions: dict[str, typesafe_sdk.Question] = {}
-        for key, s in keys.items():
-            criteria = None
-            if s.criteria_true or s.criteria_false:
-                criteria = typesafe_sdk.NoulCriteria(
-                    true=s.criteria_true or None, false=s.criteria_false or None
-                )
-            questions[key] = typesafe_sdk.Noul(instructions=s.condition, criteria=criteria)
-        response = ctx.llm.typesafe(
-            "judge", self.models["judge"], state=conversation_state(turns), questions=questions
-        )
-        return {s.name: float(response.nouls[key].noul) for key, s in keys.items()}
+
+def judge_with_jev(
+    ctx: TurnContext,
+    model: str,
+    label: str,
+    pending: list[RelaySecret],
+    state: dict[str, Any],
+) -> dict[str, float]:
+    """秘密それぞれの condition を満たしたかを、はいの確率で Jev に答えさせる（一回の呼び出し）。"""
+    # 質問の名前は ASCII にしておき、秘密の名前とは対応表で結ぶ
+    keys = {f"secret_{i}": s for i, s in enumerate(pending)}
+    questions: dict[str, typesafe_sdk.Question] = {}
+    for key, s in keys.items():
+        criteria = None
+        if s.criteria_true or s.criteria_false:
+            criteria = typesafe_sdk.NoulCriteria(
+                true=s.criteria_true or None, false=s.criteria_false or None
+            )
+        questions[key] = typesafe_sdk.Noul(instructions=s.condition, criteria=criteria)
+    response = ctx.llm.typesafe(label, model, state=state, questions=questions)
+    return {s.name: float(response.nouls[key].noul) for key, s in keys.items()}

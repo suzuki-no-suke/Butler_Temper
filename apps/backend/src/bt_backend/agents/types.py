@@ -10,6 +10,15 @@ class ChatTurn:
 
 
 @dataclass(frozen=True)
+class Interrupt:
+    """API から入った割込み要求。次のターンに、targets に挙げた相手へ伝える。"""
+
+    id: int
+    message: str
+    targets: list[str]
+
+
+@dataclass(frozen=True)
 class AgentInfo:
     id: str
     name: str
@@ -17,6 +26,8 @@ class AgentInfo:
     # 役割 -> モデル ID（Agent ごとに固定）
     models: dict[str, str]
     default_settings: dict[str, Any]
+    # 割込み要求を伝えられる相手。空なら割込みを受け付けない
+    interrupt_targets: list[str] = field(default_factory=list)
 
 
 @dataclass

@@ -5,7 +5,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from bt_backend.agents.llm import LlmSession
-from bt_backend.agents.types import AgentInfo, ChatTurn
+from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt
+
+
+class AgentPause(Exception):
+    """Agent が会話を一時停止するときに投げる。メッセージをそのままエラーとして表示する。
+
+    元の例外は __cause__ に入れる。
+    """
 
 
 class AgentSettings(BaseModel):
@@ -21,6 +28,8 @@ class TurnContext:
     # 前のターンまでの Agent の状態
     state: dict[str, Any]
     llm: LlmSession
+    # まだ伝えていない割込み要求
+    interrupts: list[Interrupt] = field(default_factory=list)
 
 
 @dataclass
@@ -36,6 +45,8 @@ class Agent[S: AgentSettings](ABC):
     description: str
     models: dict[str, str]
     settings_model: type[S]
+    # 割込み要求を伝えられる相手。空なら割込みを受け付けない
+    interrupt_targets: tuple[str, ...] = ()
 
     def info(self) -> AgentInfo:
         return AgentInfo(
@@ -44,6 +55,7 @@ class Agent[S: AgentSettings](ABC):
             description=self.description,
             models=dict(self.models),
             default_settings=self.settings_model().model_dump(),
+            interrupt_targets=list(self.interrupt_targets),
         )
 
     def parse_settings(self, raw: dict[str, Any]) -> S:

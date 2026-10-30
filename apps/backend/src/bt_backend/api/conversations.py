@@ -8,6 +8,8 @@ from bt_backend.api.schemas import (
     ConversationDetail,
     ConversationOut,
     ConversationSettingsOut,
+    InterruptCreate,
+    InterruptOut,
     MessageCommentOut,
     MessageCreate,
     MessageOut,
@@ -19,6 +21,7 @@ from bt_backend.models import (
     BotVersion,
     Conversation,
     ConversationComment,
+    ConversationInterrupt,
     Message,
     MessageComment,
 )
@@ -167,6 +170,49 @@ def post_message(
         return [_message_out(m) for m in send_message(session, raw_session, c, body.content)]
     except ConversationClosed as e:
         raise HTTPException(409, str(e)) from e
+
+
+@router.post("/conversations/{conversation_id}/interrupts")
+def create_interrupt(
+    conversation_id: int, body: InterruptCreate, session: SessionDep
+) -> InterruptOut:
+    """割込み要求を入れる。次のターンに、targets に挙げた相手へ伝わる。"""
+    c = _get_conversation(session, conversation_id)
+    if c.status != "active":
+        raise HTTPException(409, "この会話はエラーで停止しています")
+    bot = session.get(Bot, c.bot_id)
+    assert bot is not None
+    try:
+        accepted = get_agent_info(bot.agent_id).interrupt_targets
+    except UnknownAgent as e:
+        raise HTTPException(409, f"AgentCore が見つかりません: {bot.agent_id}") from e
+    if not accepted:
+        raise HTTPException(409, "この Agent の AgentCore は割込みを受け付けません")
+    unknown = [t for t in body.targets if t not in accepted]
+    if unknown:
+        raise HTTPException(
+            422, f"伝えられない相手です: {', '.join(unknown)}（使える相手: {', '.join(accepted)}）"
+        )
+    interrupt = ConversationInterrupt(
+        conversation_id=conversation_id, message=body.message, targets=list(body.targets)
+    )
+    session.add(interrupt)
+    session.commit()
+    session.refresh(interrupt)
+    return InterruptOut.model_validate(interrupt, from_attributes=True)
+
+
+@router.get("/conversations/{conversation_id}/interrupts")
+def list_interrupts(conversation_id: int, session: SessionDep) -> list[InterruptOut]:
+    _get_conversation(session, conversation_id)
+    return [
+        InterruptOut.model_validate(i, from_attributes=True)
+        for i in session.exec(
+            select(ConversationInterrupt)
+            .where(ConversationInterrupt.conversation_id == conversation_id)
+            .order_by(col(ConversationInterrupt.id))
+        )
+    ]
 
 
 @router.get("/raw-calls/{raw_call_id}")

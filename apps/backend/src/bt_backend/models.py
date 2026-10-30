@@ -90,6 +90,19 @@ class ConversationComment(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class ConversationInterrupt(SQLModel, table=True):
+    """API から入った割込み要求。次のターンに Agent へ渡す。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    conversation_id: int = Field(foreign_key="conversation.id", index=True)
+    message: str
+    # 伝える相手（AgentCore が受け付ける相手の中から選ぶ）
+    targets: list[str] = Field(sa_column=Column(JSON, nullable=False))
+    # 伝えたターンの Agent の発言。まだ伝えていなければ None
+    delivered_message_id: int | None = Field(default=None, foreign_key="message.id")
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 class SettingsChatMessage(SQLModel, table=True):
     """BOT ごとの設定変更チャットの履歴。"""
 

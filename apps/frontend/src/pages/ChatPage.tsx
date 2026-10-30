@@ -7,7 +7,11 @@ import MessageCommentEditor from '../components/MessageCommentEditor'
 import RawPanel from '../components/RawPanel'
 
 const ROLE_LABEL = { user: 'あなた', assistant: 'Agent', error: 'エラー' } as const
-const SPEAKER_LABEL: Record<string, string> = { main: 'Agent（メイン）', sub: 'Agent（サブ）' }
+const SPEAKER_LABEL: Record<string, string> = {
+  main: 'Agent（メイン）',
+  sub: 'Agent（サブ）',
+  system: 'システム',
+}
 
 export default function ChatPage() {
   const { conversationId } = useParams()

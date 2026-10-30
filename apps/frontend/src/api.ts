@@ -18,6 +18,8 @@ export interface Agent {
   description: string
   models: Record<string, string>
   default_settings: Settings
+  // 割込み要求を伝えられる相手。空なら割込みを受け付けない
+  interrupt_targets: string[]
 }
 
 export interface Bot {

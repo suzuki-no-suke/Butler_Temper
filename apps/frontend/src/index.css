@@ -157,6 +157,12 @@ button.link.active {
   border-color: var(--accent);
 }
 
+.message.assistant.speaker-system {
+  border-style: dotted;
+  background: transparent;
+  font-size: 0.9em;
+}
+
 
 .message {
   border: 1px solid var(--line);

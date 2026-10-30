@@ -10,6 +10,7 @@ class AgentOut(BaseModel):
     description: str
     models: dict[str, str]
     default_settings: dict[str, Any]
+    interrupt_targets: list[str]
 
 
 class BotCreate(BaseModel):
@@ -148,6 +149,20 @@ class ConversationOut(BaseModel):
     # 最初の利用者の発言（一覧での見分け用）
     preview: str
     last_message_at: datetime | None
+
+
+class InterruptCreate(BaseModel):
+    message: str = Field(min_length=1)
+    targets: list[str] = Field(min_length=1)
+
+
+class InterruptOut(BaseModel):
+    id: int
+    conversation_id: int
+    message: str
+    targets: list[str]
+    delivered_message_id: int | None
+    created_at: datetime
 
 
 class ConversationDetail(ConversationOut):

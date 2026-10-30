@@ -2,9 +2,16 @@
 
 from sqlmodel import Session, col, select
 
-from bt_backend.agents import ChatTurn, run_turn
+from bt_backend.agents import ChatTurn, Interrupt, run_turn
 from bt_backend.config import get_settings
-from bt_backend.models import Bot, BotVersion, Conversation, Message, utcnow
+from bt_backend.models import (
+    Bot,
+    BotVersion,
+    Conversation,
+    ConversationInterrupt,
+    Message,
+    utcnow,
+)
 from bt_backend.raw_models import RawCall
 from bt_backend.snapshot import current_source_hash
 
@@ -78,6 +85,17 @@ def resume_conversation(session: Session, conversation: Conversation) -> Convers
     return resumed
 
 
+def pending_interrupts(session: Session, conversation_id: int) -> list[ConversationInterrupt]:
+    return list(
+        session.exec(
+            select(ConversationInterrupt)
+            .where(ConversationInterrupt.conversation_id == conversation_id)
+            .where(col(ConversationInterrupt.delivered_message_id).is_(None))
+            .order_by(col(ConversationInterrupt.id))
+        )
+    )
+
+
 def send_message(
     session: Session, raw_session: Session, conversation: Conversation, content: str
 ) -> list[Message]:
@@ -108,8 +126,14 @@ def send_message(
         source_hash=current_source_hash(),
         exchanges=[],
     )
+    interrupts = pending_interrupts(session, conversation.id)
     outcome = run_turn(
-        bot.agent_id, version.settings, turns, dict(conversation.agent_state or {}), api_keys()
+        bot.agent_id,
+        version.settings,
+        turns,
+        dict(conversation.agent_state or {}),
+        api_keys(),
+        [Interrupt(id=i.id or 0, message=i.message, targets=list(i.targets)) for i in interrupts],
     )
     raw.exchanges = outcome.exchanges
     raw.error = outcome.error
@@ -144,6 +168,12 @@ def send_message(
     session.add(conversation)
     session.add(reply)
     session.commit()
+    if outcome.error is None:
+        # エラーのターンでは伝わっていないので、次のターンに持ち越す
+        for i in interrupts:
+            i.delivered_message_id = reply.id
+            session.add(i)
+        session.commit()
     session.refresh(user_message)
     session.refresh(reply)
     return [user_message, reply]

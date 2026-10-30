@@ -16,12 +16,13 @@ from bt_backend.agents.runner import (
     run_turn,
     validate_settings,
 )
-from bt_backend.agents.types import AgentInfo, ChatTurn, TurnOutcome
+from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt, TurnOutcome
 
 __all__ = [
     "AgentInfo",
     "ChatLine",
     "ChatTurn",
+    "Interrupt",
     "InvalidSettings",
     "SettingsProposal",
     "TurnOutcome",
