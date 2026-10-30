@@ -3,11 +3,13 @@
 - Agent が一つも無いとき、各 AgentCore の既定の Agent 設定で Agent を作る
 - 会話用エージェントが一つも無いとき、会話用エージェントの各 AgentCore の既定の設定で作る
 - テンプレートが一つも無いとき、会話用エージェントの既定の設定が使う台本のサンプルを作る
+- シミュレータを使う AgentCore の Agent が一つも無いとき、既定の Agent 設定で作る
+  （シミュレータより前に作った DB にも入るようにするため）
 """
 
 from sqlmodel import Session, select
 
-from bt_backend.agents import list_agents, list_conversation_agents
+from bt_backend.agents import AgentInfo, list_agents, list_conversation_agents
 from bt_backend.db import get_engine
 from bt_backend.models import (
     Bot,
@@ -17,6 +19,9 @@ from bt_backend.models import (
     Template,
     TemplateVersion,
 )
+
+# 既に Agent がある DB にも、一つ作る AgentCore
+SIMULATOR_AGENT_IDS = ("simulator-chat-sonnet",)
 
 SAMPLE_TEMPLATE_NAME = "台本サンプル"
 SAMPLE_TEMPLATE = """\
@@ -28,22 +33,31 @@ SAMPLE_TEMPLATE = """\
 5. 断ったあとの空いた時間に何をするか、執事と話す"""
 
 
+def _add_bot(session: Session, agent: AgentInfo) -> None:
+    bot = Bot(name=agent.name, agent_id=agent.id)
+    session.add(bot)
+    session.flush()
+    assert bot.id is not None
+    session.add(
+        BotVersion(bot_id=bot.id, version=1, settings=agent.default_settings, note="既定の設定")
+    )
+
+
 def seed() -> dict[str, int]:
     """作った件数を、種類ごとに返す。"""
     created = {"agents": 0, "conversation_agents": 0, "templates": 0}
     with Session(get_engine()) as session:
         if session.exec(select(Bot)).first() is None:
             for agent in list_agents():
-                bot = Bot(name=agent.name, agent_id=agent.id)
-                session.add(bot)
-                session.flush()
-                assert bot.id is not None
-                session.add(
-                    BotVersion(
-                        bot_id=bot.id, version=1, settings=agent.default_settings, note="既定の設定"
-                    )
-                )
+                _add_bot(session, agent)
                 created["agents"] += 1
+        else:
+            for agent in list_agents():
+                if agent.id not in SIMULATOR_AGENT_IDS:
+                    continue
+                if session.exec(select(Bot).where(Bot.agent_id == agent.id)).first() is None:
+                    _add_bot(session, agent)
+                    created["agents"] += 1
         if session.exec(select(ConversationBot)).first() is None:
             for core in list_conversation_agents():
                 cbot = ConversationBot(name=core.name, agent_id=core.id)

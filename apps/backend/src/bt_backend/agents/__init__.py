@@ -9,6 +9,7 @@ LLM の呼び出しに関わるソースはすべてこのフォルダに置く�
 
 from bt_backend.agents.assist.settings_chat import ChatLine, SettingsProposal, propose_settings
 from bt_backend.agents.conversation.templates import referenced_templates
+from bt_backend.agents.llm import LlmSession, anthropic_text, is_not_found
 from bt_backend.agents.runner import (
     InvalidSettings,
     UnknownAgent,
@@ -21,7 +22,15 @@ from bt_backend.agents.runner import (
     validate_conversation_settings,
     validate_settings,
 )
-from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt, TurnOutcome
+from bt_backend.agents.types import (
+    AgentInfo,
+    ChatTurn,
+    Interrupt,
+    SimulationCall,
+    SimulatorAccess,
+    SimulatorTool,
+    TurnOutcome,
+)
 
 __all__ = [
     "AgentInfo",
@@ -29,11 +38,17 @@ __all__ = [
     "ChatTurn",
     "Interrupt",
     "InvalidSettings",
+    "LlmSession",
     "SettingsProposal",
+    "SimulationCall",
+    "SimulatorAccess",
+    "SimulatorTool",
     "TurnOutcome",
     "UnknownAgent",
+    "anthropic_text",
     "get_agent_info",
     "get_conversation_agent_info",
+    "is_not_found",
     "list_agents",
     "list_conversation_agents",
     "propose_settings",

@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from bt_backend.agents.llm import LlmSession
-from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt
+from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt, SimulatorAccess
 
 
 class AgentPause(Exception):
@@ -30,6 +30,8 @@ class TurnContext:
     llm: LlmSession
     # まだ伝えていない割込み要求
     interrupts: list[Interrupt] = field(default_factory=list)
+    # 使えるシミュレータ。呼ぶかどうかは Agent が決める
+    simulators: SimulatorAccess = field(default_factory=SimulatorAccess)
 
 
 @dataclass

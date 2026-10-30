@@ -5,7 +5,7 @@ from typing import Any
 
 from bt_backend.agents.base import AgentSettings
 from bt_backend.agents.llm import LlmSession
-from bt_backend.agents.types import AgentInfo, ChatTurn
+from bt_backend.agents.types import AgentInfo, ChatTurn, SimulatorAccess
 
 
 @dataclass
@@ -17,6 +17,8 @@ class SpeakContext:
     llm: LlmSession
     # 埋め込めるテンプレート（名前 -> 本文）。会話の開始時のバージョンに固定されている
     templates: Mapping[str, str] = field(default_factory=dict)
+    # 使えるシミュレータ。呼ぶかどうかは会話用エージェントが決める
+    simulators: SimulatorAccess = field(default_factory=SimulatorAccess)
 
 
 @dataclass

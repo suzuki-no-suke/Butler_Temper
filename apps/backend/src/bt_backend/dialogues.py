@@ -21,6 +21,7 @@ from bt_backend.models import (
 )
 from bt_backend.raw_models import RawCall
 from bt_backend.services import ConversationClosed, api_keys
+from bt_backend.simulations import Caller, access_for, link_runs
 from bt_backend.snapshot import current_source_hash
 
 NOT_FOUND = "モデルが見つかりません（API が 404 を返しました）"
@@ -131,6 +132,12 @@ def advance_dialogue(
             owner.unavailable_reason = NOT_FOUND
             session.add(owner)
 
+    # どちらの発言者も、シミュレータを使える。呼んだ記録は、その発言者の発言に結びつける
+    callers = {
+        "conversation": Caller(kind="dialogue", agent_id=cbot.agent_id, dialogue_id=dialogue_id),
+        "agent": Caller(kind="dialogue", agent_id=bot.agent_id, dialogue_id=dialogue_id),
+    }
+
     # 会話用エージェントが発言する
     outcome = run_conversation_turn(
         cbot.agent_id,
@@ -139,6 +146,7 @@ def advance_dialogue(
         dict(dialogue.conversation_state or {}),
         api_keys(),
         dialogue_templates(session, dialogue),
+        access_for(session, raw_session, callers["conversation"], api_keys()),
     )
     raw = _save_raw(raw_session, dialogue_id, cbot.agent_id, outcome)
     if outcome.error is not None:
@@ -163,6 +171,7 @@ def advance_dialogue(
             _turns([*speeches, speech], "agent"),
             dict(dialogue.agent_state or {}),
             api_keys(),
+            simulators=access_for(session, raw_session, callers["agent"], api_keys()),
         )
         raw = _save_raw(raw_session, dialogue_id, bot.agent_id, outcome)
         if outcome.error is not None:
@@ -186,6 +195,9 @@ def advance_dialogue(
         session.add(m)
     session.add(dialogue)
     session.commit()
+    for m in saved:
+        if callers[m.speaker].run_ids:
+            link_runs(session, callers[m.speaker], dialogue_message_id=m.id)
     for m in saved:
         session.refresh(m)
     return saved

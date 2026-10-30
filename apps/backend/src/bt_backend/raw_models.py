@@ -34,3 +34,20 @@ class SourceSnapshot(RawBase, table=True):
     hash: str = Field(primary_key=True)
     file_count: int
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class SimulationRawCall(RawBase, table=True):
+    """シミュレート用の RAW。
+
+    シミュレータ内の LLM 呼び出しを 1 回分ずつ、シミュレータごとに分けて置く。
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    simulator: str = Field(index=True)
+    # 通常の DB の SimulationRun.id
+    simulation_run_id: int = Field(index=True)
+    # シミュレータ内での呼び出しの役割（run-1 / merge など）
+    label: str
+    exchanges: list[dict[str, Any]] = Field(sa_column=Column(JSON, nullable=False))
+    error: str | None = None
+    created_at: datetime = Field(default_factory=utcnow)

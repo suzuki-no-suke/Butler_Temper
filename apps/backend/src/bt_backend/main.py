@@ -11,6 +11,7 @@ from bt_backend.api import (
     conversations,
     dialogues,
     settings_chat,
+    simulations,
     templates,
 )
 from bt_backend.config import get_settings
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(conversation_bots.router)
     app.include_router(templates.router)
     app.include_router(dialogues.router)
+    app.include_router(simulations.router)
     return app
 
 

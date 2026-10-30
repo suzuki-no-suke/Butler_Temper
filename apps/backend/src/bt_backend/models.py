@@ -231,3 +231,46 @@ class DialogueComment(SQLModel, table=True):
     rating: str | None = None
     text: str = ""
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class SimulationRun(SQLModel, table=True):
+    """シミュレータを 1 回実行した記録。実際に使った値（グローバル設定の値を含む）と結果を残す。
+
+    シミュレータのソースは残さない。
+    各回の LLM 呼び出しは、RAW 用の DB の simulationrawcall に置く。
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    simulator: str = Field(index=True)
+    # 呼び出し元: conversation（チャットの会話）/ dialogue（エージェント間対話）
+    # / webui（テスト実行）
+    caller: str = Field(index=True)
+    conversation_id: int | None = Field(default=None, foreign_key="conversation.id", index=True)
+    # 呼び出したターンの発言（応答、またはエラー）
+    message_id: int | None = Field(default=None, foreign_key="message.id")
+    dialogue_id: int | None = Field(default=None, foreign_key="dialogue.id", index=True)
+    dialogue_message_id: int | None = Field(default=None, foreign_key="dialoguemessage.id")
+    # 呼び出した AgentCore（テスト実行では空）
+    agent_id: str = ""
+    # 呼ぶ側が渡した引数
+    args: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    # 実行に使った値のすべて。引数が合わず実行しなかった場合は None
+    params: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    # succeeded / failed / invalid（引数が足りない・合わないため実行しなかった）
+    status: str
+    result: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    # 結果のほかの内訳（各回の出目、各回の出力など）
+    detail: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    # LLM 呼び出しのエラーの回数
+    error_count: int = 0
+    error: str | None = None
+    started_at: datetime = Field(default_factory=utcnow)
+    finished_at: datetime | None = None
+
+
+class SimulationSettingsRow(SQLModel, table=True):
+    """シミュレータのグローバル設定。1 行だけ持つ。バージョン管理はしない。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    values: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    updated_at: datetime = Field(default_factory=utcnow)

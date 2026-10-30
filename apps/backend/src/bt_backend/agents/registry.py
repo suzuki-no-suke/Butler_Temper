@@ -1,6 +1,6 @@
 from typing import Any
 
-from bt_backend.agents import claude_simple
+from bt_backend.agents import claude_simple, simulator_chat
 from bt_backend.agents.base import Agent
 from bt_backend.agents.conversation import script_follower
 from bt_backend.agents.conversation.base import ConversationCore
@@ -13,6 +13,7 @@ _AGENTS: list[Agent[Any]] = [
     SecretRelayAgent(),
     HimitokuGachiAgent(),
     *claude_simple.AGENTS,
+    *simulator_chat.AGENTS,
 ]
 AGENTS: dict[str, Agent[Any]] = {a.id: a for a in _AGENTS}
 

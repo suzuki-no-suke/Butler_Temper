@@ -13,6 +13,7 @@ from bt_backend.models import (
     utcnow,
 )
 from bt_backend.raw_models import RawCall
+from bt_backend.simulations import Caller, access_for, link_runs
 from bt_backend.snapshot import current_source_hash
 
 
@@ -127,6 +128,7 @@ def send_message(
         exchanges=[],
     )
     interrupts = pending_interrupts(session, conversation.id)
+    caller = Caller(kind="conversation", agent_id=bot.agent_id, conversation_id=conversation.id)
     outcome = run_turn(
         bot.agent_id,
         version.settings,
@@ -134,6 +136,7 @@ def send_message(
         dict(conversation.agent_state or {}),
         api_keys(),
         [Interrupt(id=i.id or 0, message=i.message, targets=list(i.targets)) for i in interrupts],
+        access_for(session, raw_session, caller, api_keys()),
     )
     raw.exchanges = outcome.exchanges
     raw.error = outcome.error
@@ -168,6 +171,8 @@ def send_message(
     session.add(conversation)
     session.add(reply)
     session.commit()
+    if caller.run_ids:
+        link_runs(session, caller, message_id=reply.id)
     if outcome.error is None:
         # エラーのターンでは伝わっていないので、次のターンに持ち越す
         for i in interrupts:

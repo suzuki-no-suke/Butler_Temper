@@ -267,3 +267,64 @@ class DialogueSettingsOut(BaseModel):
     conversation_bot: ConversationSettingsOut
     bot: ConversationSettingsOut
     templates: list[DialogueTemplateContentOut]
+
+
+class SimulatorParamOut(BaseModel):
+    name: str
+    # required（必須）/ optional（任意）/ global（指定不可。グローバル設定でのみ決める）
+    kind: Literal["required", "optional", "global"]
+    description: str
+    global_key: str | None
+
+
+class SimulatorOut(BaseModel):
+    name: str
+    label: str
+    description: str
+    result_description: str
+    input_schema: dict[str, Any]
+    params: list[SimulatorParamOut]
+
+
+class SimulationTestRun(BaseModel):
+    args: dict[str, Any] = {}
+    # シミュレーションを続けて実行する回数（LLM シミュレータの内側の回数ではない）
+    times: int = Field(default=1, ge=1, le=20)
+
+
+class SimulationRunOut(BaseModel):
+    id: int
+    simulator: str
+    caller: str
+    conversation_id: int | None
+    message_id: int | None
+    dialogue_id: int | None
+    dialogue_message_id: int | None
+    agent_id: str
+    args: dict[str, Any]
+    params: dict[str, Any] | None
+    status: str
+    result: dict[str, Any] | None
+    detail: dict[str, Any] | None
+    error_count: int
+    error: str | None
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class SimulationRawCallOut(BaseModel):
+    id: int
+    label: str
+    exchanges: list[dict[str, Any]]
+    error: str | None
+    created_at: datetime
+
+
+class SimulationRunDetail(SimulationRunOut):
+    raw_calls: list[SimulationRawCallOut]
+
+
+class SimulationSettingsOut(BaseModel):
+    values: dict[str, Any]
+    defaults: dict[str, Any]
+    descriptions: dict[str, str]

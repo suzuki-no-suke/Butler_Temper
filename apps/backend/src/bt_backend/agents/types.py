@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -43,3 +44,39 @@ class TurnOutcome:
     model_unavailable: bool = False
     # HTTP でやり取りした内容。各要素の "label" は Agent 内での呼び出しの役割
     exchanges: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class SimulatorTool:
+    """Agent の LLM にツールとして見せるシミュレータ。中身は Agents の外にある。"""
+
+    name: str
+    # シミュレータが持つ短い固定の説明。いつ使うかは Agent の設定（プロンプト）に書く
+    description: str
+    # 引数の JSON Schema
+    input_schema: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class SimulationCall:
+    """シミュレータを 1 回呼んだ結果。"""
+
+    # 実行記録の id。記録しなかった（シミュレータが無いなど）場合は None
+    run_id: int | None
+    ok: bool
+    # LLM にツールの結果として返す内容。引数が足りないときは、その旨を判断できる形で返る
+    result: dict[str, Any]
+
+
+def _no_simulator(name: str, args: dict[str, Any]) -> SimulationCall:
+    return SimulationCall(
+        run_id=None, ok=False, result={"ok": False, "error": "シミュレータを使えません"}
+    )
+
+
+@dataclass
+class SimulatorAccess:
+    """1 ターンの間に Agent が使えるシミュレータ。呼ぶと実行記録が残る。"""
+
+    tools: list[SimulatorTool] = field(default_factory=list)
+    call: Callable[[str, dict[str, Any]], SimulationCall] = _no_simulator

@@ -7,7 +7,7 @@ from bt_backend.agents.base import AgentPause, TurnContext
 from bt_backend.agents.conversation.base import SpeakContext
 from bt_backend.agents.llm import LlmSession, is_not_found
 from bt_backend.agents.registry import AGENTS, CONVERSATION_AGENTS
-from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt, TurnOutcome
+from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt, SimulatorAccess, TurnOutcome
 
 
 class UnknownAgent(Exception):
@@ -44,6 +44,7 @@ def run_turn(
     state: dict[str, Any],
     api_keys: Mapping[str, str | None],
     interrupts: list[Interrupt] | None = None,
+    simulators: SimulatorAccess | None = None,
 ) -> TurnOutcome:
     """1 ターン分を実行する。失敗しても例外は投げず TurnOutcome に入れる。"""
     outcome = TurnOutcome(state=state)
@@ -55,7 +56,11 @@ def run_turn(
     try:
         parsed = agent.parse_settings(settings)
         ctx = TurnContext(
-            history=history, state=dict(state), llm=llm, interrupts=list(interrupts or [])
+            history=history,
+            state=dict(state),
+            llm=llm,
+            interrupts=list(interrupts or []),
+            simulators=simulators or SimulatorAccess(),
         )
         result = agent.run(parsed, ctx)
         outcome.text = result.text
@@ -98,6 +103,7 @@ def run_conversation_turn(
     state: dict[str, Any],
     api_keys: Mapping[str, str | None],
     templates: Mapping[str, str],
+    simulators: SimulatorAccess | None = None,
 ) -> TurnOutcome:
     """会話用エージェントの発言を一つ作る。失敗しても例外は投げず TurnOutcome に入れる。
 
@@ -111,7 +117,13 @@ def run_conversation_turn(
     llm = LlmSession(api_keys)
     try:
         parsed = core.parse_settings(settings)
-        ctx = SpeakContext(history=history, state=dict(state), llm=llm, templates=dict(templates))
+        ctx = SpeakContext(
+            history=history,
+            state=dict(state),
+            llm=llm,
+            templates=dict(templates),
+            simulators=simulators or SimulatorAccess(),
+        )
         result = core.speak(parsed, ctx)
         if result.text == "":
             raise ValueError("会話用エージェントの発言が空でした")

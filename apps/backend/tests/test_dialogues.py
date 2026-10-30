@@ -203,3 +203,40 @@ def test_agent_error_stops_and_resume(client: TestClient, llm: Callable[[Handler
     assert resumed["templates"] == detail["templates"]
     llm(_llm_by_model(sent))
     assert client.post(f"/api/dialogues/{resumed['id']}/turn").status_code == 200
+
+
+def test_agent_can_simulate_in_dialogue(client: TestClient, llm: Callable[[Handler], None]) -> None:
+    def handler(req: httpx2.Request) -> httpx2.Response:
+        body = json.loads(req.content)
+        if "tools" not in body:
+            return json_response(200, anthropic_message("主人の発言", body["model"]))
+        if isinstance(body["messages"][-1]["content"], list):
+            return json_response(200, anthropic_message("6 が出ました", body["model"]))
+        tool_use = {"type": "tool_use", "id": "tu_1", "name": "dice", "input": {"m": 6}}
+        return json_response(
+            200,
+            {
+                **anthropic_message("", body["model"]),
+                "content": [tool_use],
+                "stop_reason": "tool_use",
+            },
+        )
+
+    llm(handler)
+    _create_template(client)
+    cbot_id = _create_conversation_bot(client)
+    agent = next(a for a in client.get("/api/agents").json() if a["id"] == "simulator-chat-sonnet")
+    bot = client.post(
+        "/api/bots",
+        json={"name": "執事", "agent_id": agent["id"], "settings": agent["default_settings"]},
+    ).json()
+    dialogue = client.post(
+        "/api/dialogues", json={"conversation_bot_id": cbot_id, "bot_id": bot["id"]}
+    ).json()
+    [_, reply] = client.post(f"/api/dialogues/{dialogue['id']}/turn").json()
+    assert reply["content"] == "6 が出ました"
+    [run] = client.get("/api/simulation-runs").json()
+    assert run["caller"] == "dialogue"
+    assert run["dialogue_id"] == dialogue["id"]
+    assert run["dialogue_message_id"] == reply["id"]
+    assert reply["parts"][0]["simulation_run_id"] == run["id"]
