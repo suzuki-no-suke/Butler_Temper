@@ -617,3 +617,22 @@ button.raw-select {
 .raw-comment {
   margin: 4px 0;
 }
+
+/* Agent の項目と、エージェント間対話の項目の間の区切り */
+.nav-separator {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+}
+
+.dialogue-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.dialogue-controls input[type='number'] {
+  width: 4em;
+  margin-right: 4px;
+}

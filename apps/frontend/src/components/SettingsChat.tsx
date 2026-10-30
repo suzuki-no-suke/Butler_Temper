@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { api, type Settings, type SettingsChatMessage } from '../api'
+import { type BotApi, type Settings, type SettingsChatMessage } from '../api'
 
 interface Props {
+  botApi: BotApi
   botId: number
   // 画面上の編集中の設定（JSON テキスト）
   currentSettings: string
@@ -11,15 +12,15 @@ interface Props {
 
 const ROLE_LABEL = { user: 'あなた', assistant: 'アシスタント', error: 'エラー' } as const
 
-export default function SettingsChat({ botId, currentSettings, onProposal }: Props) {
+export default function SettingsChat({ botApi, botId, currentSettings, onProposal }: Props) {
   const [messages, setMessages] = useState<SettingsChatMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.settingsChat(botId).then(setMessages, (e: Error) => setError(e.message))
-  }, [botId])
+    botApi.settingsChat(botId).then(setMessages, (e: Error) => setError(e.message))
+  }, [botApi, botId])
 
   const send = async (e: FormEvent) => {
     e.preventDefault()
@@ -27,7 +28,7 @@ export default function SettingsChat({ botId, currentSettings, onProposal }: Pro
     setSending(true)
     setError(null)
     try {
-      const result = await api.sendSettingsChat(botId, input, currentSettings)
+      const result = await botApi.sendSettingsChat(botId, input, currentSettings)
       setMessages((prev) => [...prev, ...result.messages])
       setInput('')
       if (result.proposed_settings) onProposal(result.proposed_settings)
@@ -41,7 +42,7 @@ export default function SettingsChat({ botId, currentSettings, onProposal }: Pro
   const clear = async () => {
     setError(null)
     try {
-      await api.clearSettingsChat(botId)
+      await botApi.clearSettingsChat(botId)
       setMessages([])
     } catch (e) {
       setError((e as Error).message)
@@ -52,7 +53,7 @@ export default function SettingsChat({ botId, currentSettings, onProposal }: Pro
     <section className="settings-chat">
       <h3>設定変更チャット</h3>
       <p className="hint">
-        要望を書くと、変更案が「編集中の設定」に反映されます。保存するまで Agent は変わりません。
+        要望を書くと、変更案が「編集中の設定」に反映されます。保存するまで設定は変わりません。
       </p>
       <ol className="messages">
         {messages.map((m) => (

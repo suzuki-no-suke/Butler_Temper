@@ -36,7 +36,8 @@ npm run dev
 - DB のマイグレーション（data フォルダに作成・更新）と、Agent が一つも無いときの Agent の作成（各 AgentCore の既定の設定）をしてから、Backend（http://localhost:8000）と Frontend（http://localhost:5173）を同時に起動する
 - Ctrl+C で両方とも止まる
 - 片方だけ起動するときは `npm run dev:backend` / `npm run dev:frontend`、マイグレーションだけなら `npm run migrate`、Agent の作成だけなら `npm run seed`
-- Agent 設定を JSON に書き出すときは `npm run export:bots`（既定の書き出し先は data/exports/bot_settings）
+- Agent 設定を JSON に書き出すときは `npm run export:bots`（既定の書き出し先は data/exports/bot_settings。会話用エージェントはその下の conversation_agents）
+- seed は、Agent・会話用エージェント・テンプレートのそれぞれについて、一つも無いときに作る
 
 4. ブラウザで http://localhost:5173/ を開く
 

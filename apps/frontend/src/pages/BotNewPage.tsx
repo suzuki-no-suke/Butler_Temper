@@ -1,12 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useOutletContext } from 'react-router'
-import { api } from '../api'
 import AgentInfo from '../components/AgentInfo'
 import { formatSettings, parseSettings } from '../settingsJson'
 import type { BotsContext } from './BotsLayout'
 
 export default function BotNewPage() {
-  const { agents, reloadBots } = useOutletContext<BotsContext>()
+  const { agents, reloadBots, kind } = useOutletContext<BotsContext>()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [agentId, setAgentId] = useState('')
@@ -32,14 +31,14 @@ export default function BotNewPage() {
       return
     }
     try {
-      const bot = await api.createBot({
+      const bot = await kind.botApi.createBot({
         name,
         agent_id: agent.id,
         settings: parsed.settings,
         note: '作成時の設定',
       })
       reloadBots()
-      navigate(`/bots/${bot.id}`)
+      navigate(`${kind.basePath}/${bot.id}`)
     } catch (err) {
       setError((err as Error).message)
     }
@@ -47,7 +46,7 @@ export default function BotNewPage() {
 
   return (
     <div className="page">
-      <h2>新しい Agent を作る</h2>
+      <h2>新しい{kind.label}を作る</h2>
       <form className="form" onSubmit={create}>
         <label>
           採用する AgentCore
@@ -67,7 +66,7 @@ export default function BotNewPage() {
         </label>
         {agent && (
           <label>
-            Agent 設定（JSON。初期値は AgentCore の既定の Agent 設定）
+            {kind.label}の設定（JSON。初期値は AgentCore の既定の設定）
             <textarea
               className="code"
               value={settingsText}

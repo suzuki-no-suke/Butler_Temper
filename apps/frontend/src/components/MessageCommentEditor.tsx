@@ -1,15 +1,25 @@
 import { useState } from 'react'
-import { api, type MessageComment, type Rating } from '../api'
+import { conversationCommentApi, type CommentApi, type MessageComment, type Rating } from '../api'
 import RatingPicker from './RatingPicker'
 
 interface Props {
   messageId: number
   comment: MessageComment | null
   onSaved: (comment: MessageComment | null) => void
+  // 既定は Agent との会話の発言
+  commentApi?: CommentApi
+  // 評価を付けるボタンの文言
+  label?: string
 }
 
-// Agent の回答一つにつき一つの評価とコメント
-export default function MessageCommentEditor({ messageId, comment, onSaved }: Props) {
+// 発言一つにつき一つの評価とコメント
+export default function MessageCommentEditor({
+  messageId,
+  comment,
+  onSaved,
+  commentApi = conversationCommentApi,
+  label = 'この回答を評価する',
+}: Props) {
   const [editing, setEditing] = useState(false)
   const [rating, setRating] = useState<Rating | null>(comment?.rating ?? null)
   const [text, setText] = useState(comment?.text ?? '')
@@ -25,7 +35,7 @@ export default function MessageCommentEditor({ messageId, comment, onSaved }: Pr
     if (!rating) return
     setError(null)
     try {
-      onSaved(await api.putMessageComment(messageId, rating, text))
+      onSaved(await commentApi.putMessageComment(messageId, rating, text))
       setEditing(false)
     } catch (e) {
       setError((e as Error).message)
@@ -35,7 +45,7 @@ export default function MessageCommentEditor({ messageId, comment, onSaved }: Pr
   const remove = async () => {
     setError(null)
     try {
-      await api.deleteMessageComment(messageId)
+      await commentApi.deleteMessageComment(messageId)
       onSaved(null)
       setEditing(false)
     } catch (e) {
@@ -58,7 +68,7 @@ export default function MessageCommentEditor({ messageId, comment, onSaved }: Pr
           </>
         ) : (
           <button type="button" className="link" onClick={open}>
-            この回答を評価する
+            {label}
           </button>
         )}
       </div>

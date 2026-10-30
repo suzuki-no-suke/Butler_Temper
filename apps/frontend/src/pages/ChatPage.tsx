@@ -275,7 +275,11 @@ export default function ChatPage() {
             onToggle={(e) => setRawOpen((e.currentTarget as HTMLDetailsElement).open)}
           >
             <summary>RAW パラメーター</summary>
-            <RawPanel message={rawMessage} />
+            <RawPanel
+              message={rawMessage}
+              label={rawMessage?.role === 'error' ? 'エラー' : 'Agent'}
+              commentable={rawMessage?.role === 'assistant'}
+            />
           </details>
         </aside>
       )}

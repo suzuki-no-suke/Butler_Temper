@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router'
-import { api, type BotDetail } from '../api'
+import { type BotDetail } from '../api'
 import AgentInfo from '../components/AgentInfo'
 import SettingsChat from '../components/SettingsChat'
 import { formatSettings, parseSettings } from '../settingsJson'
@@ -8,7 +8,7 @@ import type { BotsContext } from './BotsLayout'
 
 export default function BotDetailPage() {
   const botId = Number(useParams().botId)
-  const { agents, reloadBots } = useOutletContext<BotsContext>()
+  const { agents, reloadBots, kind } = useOutletContext<BotsContext>()
   const navigate = useNavigate()
   const [bot, setBot] = useState<BotDetail | null>(null)
   const [name, setName] = useState('')
@@ -21,7 +21,7 @@ export default function BotDetailPage() {
   const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    api.bot(botId).then(
+    kind.botApi.bot(botId).then(
       (b) => {
         setBot(b)
         setName(b.name)
@@ -36,7 +36,7 @@ export default function BotDetailPage() {
       },
       (e: Error) => setError(e.message),
     )
-  }, [botId])
+  }, [kind, botId])
 
   if (!bot) return <div className="page">{error ? <p className="error">{error}</p> : '読み込み中…'}</div>
 
@@ -67,7 +67,7 @@ export default function BotDetailPage() {
     }
     if (forking) {
       try {
-        const forked = await api.forkBot(bot.id, {
+        const forked = await kind.botApi.forkBot(bot.id, {
           name: name.trim(),
           settings: parsed.settings,
           note,
@@ -75,15 +75,15 @@ export default function BotDetailPage() {
         })
         reloadBots()
         setNote('')
-        navigate(`/bots/${forked.id}`)
+        navigate(`${kind.basePath}/${forked.id}`)
       } catch (e) {
         setError((e as Error).message)
       }
       return
     }
     try {
-      const v = await api.createVersion(bot.id, { settings: parsed.settings, note })
-      setBot(await api.bot(bot.id))
+      const v = await kind.botApi.createVersion(bot.id, { settings: parsed.settings, note })
+      setBot(await kind.botApi.bot(bot.id))
       reloadBots()
       setBaseVersion(v.version)
       setNote('')
@@ -108,17 +108,17 @@ export default function BotDetailPage() {
         )}
       </div>
       <p className="hint">
-        名前を変えずに保存すると、同じ名前の Agent の新しいバージョンになります。
-        名前を変えて保存すると、この Agent はそのままに、同じ AgentCore で新しい名前の Agent を v1
-        から作ります（フォーク。バージョンの履歴と会話は引き継ぎません）。
+        名前を変えずに保存すると、同じ名前の{kind.label}の新しいバージョンになります。
+        名前を変えて保存すると、この{kind.label}はそのままに、同じ AgentCore で新しい名前の
+        {kind.label}を v1 から作ります（フォーク。バージョンの履歴と会話は引き継ぎません）。
       </p>
       {bot.forked_from_bot_id && (
         <p className="hint">
-          <Link to={`/bots/${bot.forked_from_bot_id}`}>
-            {bot.forked_from_bot_name ?? `Agent #${bot.forked_from_bot_id}`}
+          <Link to={`${kind.basePath}/${bot.forked_from_bot_id}`}>
+            {bot.forked_from_bot_name ?? `${kind.label} #${bot.forked_from_bot_id}`}
           </Link>
           {bot.forked_from_version !== null && ` のバージョン ${bot.forked_from_version}`}
-          からフォークした Agent です。
+          からフォークした{kind.label}です。
         </p>
       )}
       {bot.unavailable_reason && <p className="error">停止中: {bot.unavailable_reason}</p>}
@@ -133,7 +133,7 @@ export default function BotDetailPage() {
           {message && <p className="notice">{message}</p>}
           <div className="form">
             <label>
-              Agent 設定（JSON）
+              {kind.label}の設定（JSON）
               <textarea
                 className="code"
                 value={draft}
@@ -156,6 +156,7 @@ export default function BotDetailPage() {
           </div>
           <SettingsChat
             key={bot.id}
+            botApi={kind.botApi}
             botId={bot.id}
             currentSettings={draft}
             onProposal={(settings) => {

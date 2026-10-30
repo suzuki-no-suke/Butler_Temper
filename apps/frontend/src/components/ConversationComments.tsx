@@ -1,15 +1,24 @@
 import { useState } from 'react'
-import { api, type ConversationComment, type Rating } from '../api'
+import { conversationCommentApi, type CommentApi, type ConversationComment, type Rating } from '../api'
 import RatingPicker from './RatingPicker'
 
 interface Props {
   conversationId: number
   comments: ConversationComment[]
   onChange: (comments: ConversationComment[]) => void
+  // 既定は Agent との会話
+  commentApi?: CommentApi
+  title?: string
 }
 
 // 会話全体へのコメント。都度いくつでも付けられる
-export default function ConversationComments({ conversationId, comments, onChange }: Props) {
+export default function ConversationComments({
+  conversationId,
+  comments,
+  onChange,
+  commentApi = conversationCommentApi,
+  title = '会話全体へのコメント',
+}: Props) {
   const [rating, setRating] = useState<Rating | null>(null)
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +26,7 @@ export default function ConversationComments({ conversationId, comments, onChang
   const add = async () => {
     setError(null)
     try {
-      const comment = await api.addConversationComment(conversationId, rating, text)
+      const comment = await commentApi.addComment(conversationId, rating, text)
       onChange([...comments, comment])
       setRating(null)
       setText('')
@@ -29,7 +38,7 @@ export default function ConversationComments({ conversationId, comments, onChang
   const remove = async (id: number) => {
     setError(null)
     try {
-      await api.deleteConversationComment(id)
+      await commentApi.deleteComment(id)
       onChange(comments.filter((c) => c.id !== id))
     } catch (e) {
       setError((e as Error).message)
@@ -38,7 +47,7 @@ export default function ConversationComments({ conversationId, comments, onChang
 
   return (
     <section className="conversation-comments">
-      <h3>会話全体へのコメント</h3>
+      <h3>{title}</h3>
       <ul>
         {comments.map((c) => (
           <li key={c.id}>

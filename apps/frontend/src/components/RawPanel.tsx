@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Message, type RawCall, type RawExchange } from '../api'
+import { api, type MessageComment, type RawCall, type RawExchange } from '../api'
 
 const json = (value: unknown) => JSON.stringify(value, null, 2)
 
@@ -41,8 +41,25 @@ function Exchange({ exchange, index }: { exchange: RawExchange; index: number })
   )
 }
 
+// RAW パラメーター欄に出せる発言（Agent との会話と、エージェント間対話の両方）
+export interface RawTarget {
+  seq: number
+  raw_call_id: number | null
+  agent_state: Record<string, unknown> | null
+  parts: unknown[] | null
+  comment: MessageComment | null
+}
+
+interface Props {
+  message: RawTarget | null
+  // 発言者の表示（例: Agent / エラー）
+  label: string
+  // 評価・コメントを付けられる発言か
+  commentable: boolean
+}
+
 // 選んだ発言の RAW（LLM とのやり取り）と、Agent が残した記録を表示する
-export default function RawPanel({ message }: { message: Message | null }) {
+export default function RawPanel({ message, label, commentable }: Props) {
   const [raw, setRaw] = useState<RawCall | null>(null)
   const [error, setError] = useState<string | null>(null)
   const rawCallId = message?.raw_call_id ?? null
@@ -73,10 +90,10 @@ export default function RawPanel({ message }: { message: Message | null }) {
 
   return (
     <div className="raw-panel-body">
-      <p className="hint">発言 #{message.seq + 1}（{message.role === 'error' ? 'エラー' : 'Agent'}）の記録</p>
+      <p className="hint">発言 #{message.seq + 1}（{label}）の記録</p>
       {error && <p className="error">{error}</p>}
 
-      {message.role === 'assistant' && (
+      {commentable && (
         <details open>
           <summary>この発言への評価・コメント</summary>
           {message.comment ? (

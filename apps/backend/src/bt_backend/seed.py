@@ -74,7 +74,7 @@ def seed() -> dict[str, int]:
 if __name__ == "__main__":
     created = seed()
     labels = {
-        "agents": "Agent",
+        "agents": "Agent ",
         "conversation_agents": "会話用エージェント",
         "templates": "テンプレート",
     }

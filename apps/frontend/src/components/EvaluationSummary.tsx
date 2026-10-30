@@ -1,21 +1,36 @@
-import { RATINGS, type Message } from '../api'
+import { RATINGS, type MessageComment } from '../api'
 
-interface Props {
-  messages: Message[]
+interface Rated {
+  id: number
+  seq: number
+  content: string
+  comment: MessageComment | null
+}
+
+interface Props<T extends Rated> {
+  messages: T[]
   // 発言を選び、RAW パラメーター欄に表示する
   onSelect: (messageId: number) => void
+  // 発言者の表示。指定すると、一覧の各行に添える
+  speakerLabel?: (message: T) => string
+  title?: string
 }
 
 const PREVIEW_CHARS = 40
 
-// この会話で、ここまでに Agent の回答へ付けた評価とコメントの一覧
-export default function EvaluationSummary({ messages, onSelect }: Props) {
+// この会話で、ここまでに発言へ付けた評価とコメントの一覧
+export default function EvaluationSummary<T extends Rated>({
+  messages,
+  onSelect,
+  speakerLabel,
+  title = '回答への評価とコメント（ここまで）',
+}: Props<T>) {
   const rated = messages.filter((m) => m.comment)
   const counts = RATINGS.map((r) => [r, rated.filter((m) => m.comment?.rating === r).length] as const)
 
   return (
     <section className="evaluation-summary">
-      <h3>回答への評価とコメント（ここまで）</h3>
+      <h3>{title}</h3>
       {rated.length === 0 ? (
         <p className="hint">まだありません。</p>
       ) : (
@@ -35,7 +50,7 @@ export default function EvaluationSummary({ messages, onSelect }: Props) {
                   {m.comment!.rating}
                 </span>
                 <span className="evaluation-target">
-                  発言 #{m.seq + 1}「
+                  発言 #{m.seq + 1}{speakerLabel && `（${speakerLabel(m)}）`}「
                   {m.content.length > PREVIEW_CHARS
                     ? `${m.content.slice(0, PREVIEW_CHARS)}…`
                     : m.content}
