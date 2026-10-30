@@ -39,11 +39,17 @@ class LlmArgs(SimulatorArgs):
         default=None, ge=1, le=100, description="別々に呼ぶ回数（既定はグローバル設定）"
     )
     model: str | None = Field(default=None, description="各回のモデル（既定はグローバル設定）")
-    output_schema: dict[str, Any] | None = Field(
-        default=None,
+    output_schema: dict[str, Any] = Field(
+        default_factory=lambda: dict(DEFAULT_OUTPUT_SCHEMA),
         description=(
             '全体の結果の形式（type が object の JSON Schema）。既定は {"result": 文章} の形'
         ),
+    )
+    merge_model: str | None = Field(
+        default=None, description="全体の結果をまとめる回のモデル（既定はグローバル設定）"
+    )
+    merge_instruction: str | None = Field(
+        default=None, description="まとめる回への指示（既定はグローバル設定）"
     )
 
 
@@ -60,19 +66,20 @@ class LlmSimulator(Simulator):
     )
     result_description = 'output_schema の形（既定は {"result": 文章}）'
     args_model = LlmArgs
-    global_defaults = {"runs": "llm_runs", "model": "llm_model"}
+    global_defaults = {
+        "runs": "llm_runs",
+        "model": "llm_model",
+        "merge_model": "llm_merge_model",
+        "merge_instruction": "llm_merge_instruction",
+    }
     global_only = (
-        "llm_merge_model",
-        "llm_merge_instruction",
         "llm_run_max_tokens",
         "llm_merge_max_tokens",
         "llm_concurrency",
     )
 
     def check(self, params: dict[str, Any]) -> None:
-        if params["output_schema"] is None:
-            params["output_schema"] = DEFAULT_OUTPUT_SCHEMA
-        elif params["output_schema"].get("type") != "object":
+        if params["output_schema"].get("type") != "object":
             raise InvalidArguments(
                 "output_schema は type が object の JSON Schema にしてください", []
             )
@@ -115,7 +122,7 @@ class LlmSimulator(Simulator):
             f"## {o['run']} 回目\n{o['text']}" for o in outputs if o["error"] is None
         )
         content = (
-            f"{params['llm_merge_instruction']}\n\n# 条件\n{params['prompt']}\n\n# 各回の結果\n"
+            f"{params['merge_instruction']}\n\n# 条件\n{params['prompt']}\n\n# 各回の結果\n"
             f"{results}"
         )
         llm = LlmSession(api_keys)
@@ -123,7 +130,7 @@ class LlmSimulator(Simulator):
             message = llm.anthropic(
                 "merge",
                 {
-                    "model": params["llm_merge_model"],
+                    "model": params["merge_model"],
                     "max_tokens": params["llm_merge_max_tokens"],
                     "messages": [{"role": "user", "content": content}],
                     "tools": [

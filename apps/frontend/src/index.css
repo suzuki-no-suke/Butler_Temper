@@ -642,3 +642,10 @@ button.raw-select {
   background: transparent;
   font-size: 0.9em;
 }
+
+/* シミュレーションの結果は全回分が入って長くなるので、枠の中でスクロールさせる */
+.history-item pre.code,
+.history-preview.code {
+  max-height: 360px;
+  overflow: auto;
+}

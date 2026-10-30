@@ -5,10 +5,10 @@ import {
   type SimulationCaller,
   type SimulationRun,
   type SimulationRunDetail,
-  type SimulationSettings,
   type Simulator,
 } from '../api'
 import { Exchange } from '../components/RawPanel'
+import SimulationSettingsEditor from '../components/SimulationSettingsEditor'
 import { CALLER_LABEL, STATUS_LABEL } from '../simulationLabels'
 
 const json = (value: unknown) => JSON.stringify(value, null, 2)
@@ -59,7 +59,7 @@ export default function SimulationRunsPage() {
   return (
     <div className="page">
       <h2>シミュレーション履歴</h2>
-      <GlobalSettingsEditor />
+      <SimulationSettingsEditor />
       <h3>実行記録</h3>
       <label className="filter">
         シミュレータで絞り込む
@@ -171,70 +171,5 @@ function RunDetail({ runId }: { runId: number }) {
         </>
       )}
     </div>
-  )
-}
-
-// グローバル設定。バージョン管理はしない（実行のたびに、使った値が実行記録に残る）
-function GlobalSettingsEditor() {
-  const [settings, setSettings] = useState<SimulationSettings | null>(null)
-  const [text, setText] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    api.simulationSettings().then((s) => {
-      setSettings(s)
-      setText(json(s.values))
-    }, (e: Error) => setError(e.message))
-  }, [])
-
-  const save = async () => {
-    setError(null)
-    setMessage(null)
-    let values: Record<string, unknown>
-    try {
-      values = JSON.parse(text) as Record<string, unknown>
-    } catch {
-      setError('JSON として読めません')
-      return
-    }
-    try {
-      const saved = await api.saveSimulationSettings(values)
-      setSettings(saved)
-      setText(json(saved.values))
-      setMessage('保存しました')
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
-
-  return (
-    <details className="agent-info">
-      <summary>グローバル設定（GlobalSimulatingParameter）</summary>
-      {settings && (
-        <ul>
-          {Object.entries(settings.descriptions).map(([key, description]) => (
-            <li key={key}>
-              <span className="code">{key}</span>: {description}（既定 {json(settings.defaults[key])}）
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="form">
-        <textarea
-          className="code"
-          rows={Math.max(6, text.split('\n').length + 1)}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <div className="button-row">
-          <button type="button" onClick={save}>
-            保存する
-          </button>
-        </div>
-        {message && <p className="notice">{message}</p>}
-        {error && <p className="error">{error}</p>}
-      </div>
-    </details>
   )
 }

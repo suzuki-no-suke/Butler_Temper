@@ -34,12 +34,18 @@ def _tool_use(name: str, args: dict[str, Any], model: str = "claude-sonnet-5-5")
 
 def test_simulators_list_param_kinds(client: TestClient) -> None:
     simulators = {s["name"]: s for s in client.get("/api/simulators").json()}
-    assert set(simulators) == {"omikuji", "dice", "dice_sum", "llm"}
+    assert set(simulators) == {"omikuji", "dice", "dice_sum", "llm", "nlh_draw"}
     kinds = {p["name"]: p["kind"] for p in simulators["llm"]["params"]}
     assert kinds["prompt"] == "required"
     assert kinds["runs"] == "optional"
     assert kinds["model"] == "optional"
+    assert kinds["merge_model"] == "optional"
+    assert kinds["merge_instruction"] == "optional"
     assert kinds["llm_concurrency"] == "global"
+    defaults = {p["name"]: p["default"] for p in simulators["llm"]["params"]}
+    assert defaults["runs"] == 20
+    assert defaults["merge_model"] == "claude-sonnet-5-5"
+    assert defaults["output_schema"]["type"] == "object"
     assert simulators["omikuji"]["params"] == []
 
 
@@ -149,7 +155,13 @@ def test_agent_calls_simulator_with_tool_use(
     reply = r.json()[1]
     assert reply["content"] == "吉でございます"
 
-    assert {t["name"] for t in sent[0]["tools"]} == {"omikuji", "dice", "dice_sum", "llm"}
+    assert {t["name"] for t in sent[0]["tools"]} == {
+        "omikuji",
+        "dice",
+        "dice_sum",
+        "llm",
+        "nlh_draw",
+    }
     tool_result = sent[1]["messages"][-1]["content"][0]
     assert tool_result["type"] == "tool_result"
     assert json.loads(tool_result["content"])["ok"] is True
@@ -180,3 +192,113 @@ def test_agent_without_tool_use_has_no_parts(
     ]
     assert reply["parts"] is None
     assert client.get("/api/simulation-runs").json() == []
+
+
+def test_nlh_draw_counts_and_returns_every_result(client: TestClient) -> None:
+    args = {
+        "hero_hand": "AhAd",
+        "hero_position": "BTN",
+        "villains": [{"position": "BB", "hand": "KsKd"}, {"position": "SB", "hand": "X"}],
+        "board": "7s7h7d",
+        "runs": 50,
+    }
+    [run] = _run(client, "nlh_draw", args)
+    assert run["status"] == "succeeded", run["error"]
+    result = run["result"]
+    assert result["runs"] == 50
+    assert result["hero_wins"] + result["hero_losses"] + result["ties"] == 50
+    assert result["hero_win_rate"] == result["hero_wins"] / 50
+    assert len(result["results"]) == 50
+    first = result["results"][0]
+    assert first["hero"] == "Ah Ad"
+    assert first["board"].startswith("7s 7h 7d")
+    assert len(first["board"].split()) == 5
+    assert [v["position"] for v in first["villains"]] == ["BB", "SB"]
+    assert first["villains"][0]["hand"] == "Ks Kd"
+    assert set(first["made_hands"]) == {"Hero", "BB", "SB"}
+    cards = first["hero"].split() + first["board"].split()
+    cards += [c for v in first["villains"] for c in v["hand"].split()]
+    assert len(cards) == len(set(cards))
+
+
+def test_nlh_draw_default_runs_and_hard_limit(client: TestClient) -> None:
+    args = {"hero_hand": "X", "villains": [{"position": "BB", "hand": "X"}]}
+    [run] = _run(client, "nlh_draw", args)
+    assert run["params"]["runs"] == 20
+    assert len(run["result"]["results"]) == 20
+    [run] = _run(client, "nlh_draw", {**args, "runs": 1001})
+    assert run["status"] == "invalid"
+    assert client.put("/api/simulation-settings", json={"nlh_runs": 1001}).status_code == 422
+
+
+def test_nlh_draw_rejects_bad_cards(client: TestClient) -> None:
+    villains = [{"position": "BB", "hand": "AhKd"}]
+    for args in (
+        {"hero_hand": "AhAd", "villains": villains},  # Ah が二度
+        {"hero_hand": "AsAd", "villains": villains, "board": "7s7h"},  # ボードが 2 枚
+        {"hero_hand": "A", "villains": villains},
+        {"hero_hand": "1s2s", "villains": villains},
+        {"hero_hand": "AsAd", "hero_position": "BB", "villains": villains},
+    ):
+        [run] = _run(client, "nlh_draw", args)
+        assert run["status"] == "invalid", args
+
+
+def test_nlh_evaluate_ranks_hands() -> None:
+    from bt_backend.simulators.nlh import evaluate, parse_cards
+
+    def rank(text: str) -> tuple[int, ...]:
+        return evaluate(parse_cards(text))
+
+    assert rank("Ah2h3h4h5h9c9d") == (8, 5)
+    assert rank("7s7h7d7c2h2d3s") == (7, 7, 3)
+    assert rank("7s7h7d2h2d2s3c") == (6, 7, 2)
+    assert rank("Ad2c3h4s5d9c9d") == (4, 5)
+    assert rank("9c9dKhKs4c4d3h") == (2, 13, 9, 4)
+    assert rank("AsKsQsJs9s8h8d") > rank("AhKdQcJsTd8h8d")
+
+
+def test_simulator_propose_fills_defaults(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+    from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+    from bt_backend.simulators import propose
+
+    answers = iter(
+        [
+            {"reply": "x", "args_json": '{"n": 3}'},  # m が無いのでやり直し
+            {"reply": "3 個振ります", "args_json": '{"n": 3, "m": 6}'},
+        ]
+    )
+
+    def responder(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, next(answers))])
+
+    real = propose.propose_args
+
+    def wrapped(
+        simulator: Any,
+        settings: Any,
+        current_args: str,
+        history: list[propose.ChatLine],
+        request: str,
+        api_key: str | None,
+    ) -> propose.ArgsProposal:
+        return real(
+            simulator, settings, current_args, history, request, api_key, FunctionModel(responder)
+        )
+
+    monkeypatch.setattr("bt_backend.api.simulations.propose_args", wrapped)
+    r = client.post("/api/simulators/dice_sum/propose", json={"request": "3 個振りたい"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"reply": "3 個振ります", "args": {"n": 3, "m": 6}}
+
+    answers = iter([{"reply": "天気", "args_json": '{"prompt": "明日の天気"}'}])
+    r = client.post("/api/simulators/llm/propose", json={"request": "天気"})
+    args = r.json()["args"]
+    assert args["prompt"] == "明日の天気"
+    assert args["runs"] == 20
+    assert args["merge_model"] == "claude-sonnet-5-5"
+    assert args["output_schema"]["type"] == "object"

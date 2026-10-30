@@ -307,6 +307,14 @@ export interface SimulatorParam {
   kind: 'required' | 'optional' | 'global'
   description: string
   global_key: string | null
+  // 任意の項目の既定値（グローバル設定から取るものは、今の設定の値）
+  default: unknown
+}
+
+export interface SimulatorProposal {
+  reply: string
+  // 既定値の項目も含めた引数の全体。提案しない場合は null
+  args: Record<string, unknown> | null
 }
 
 export interface Simulator {
@@ -393,6 +401,10 @@ export const api = {
   simulators: () => request<Simulator[]>('/api/simulators'),
   testRunSimulator: (name: string, args: Record<string, unknown>, times: number) =>
     post<SimulationRun[]>(`/api/simulators/${name}/runs`, { args, times }),
+  proposeSimulatorArgs: (
+    name: string,
+    body: { request: string; history: { role: string; content: string }[]; current_args: string },
+  ) => post<SimulatorProposal>(`/api/simulators/${name}/propose`, body),
   simulationRuns: (filter: { simulator?: string; caller?: string } = {}) => {
     const params = new URLSearchParams()
     if (filter.simulator) params.set('simulator', filter.simulator)

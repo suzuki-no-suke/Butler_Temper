@@ -154,7 +154,7 @@ AgentCore 一覧
 ## 細則
 
 - モデル : claude-sonnet-5-5
-- simulators に挙げたシミュレータをツールとして見せる。既定は omikuji / dice / dice_sum / llm のすべて
+- simulators に挙げたシミュレータをツールとして見せる。既定は omikuji / dice / dice_sum / llm / nlh_draw のすべて
 - 応答が tool_use で止まったら、シミュレータを呼び、結果を tool_result として返して続きを得る。往復は max_tool_rounds（既定 4）まで。上限に達した回は、ツールを使わせずに応答させる
   - ツールのやり取りの途中は、応答の内容（thinking ブロックを含む）をそのまま返す
 - 表示用の内訳には、メインの発言と、シミュレータの呼び出しと結果（speaker が simulation、実行記録の id 付き）を順に出す。シミュレータを呼ばなかったターンは内訳を持たない

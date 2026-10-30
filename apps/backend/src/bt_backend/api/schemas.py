@@ -275,6 +275,8 @@ class SimulatorParamOut(BaseModel):
     kind: Literal["required", "optional", "global"]
     description: str
     global_key: str | None
+    # 任意の項目の既定値（グローバル設定から取るものは、今の設定の値）
+    default: Any = None
 
 
 class SimulatorOut(BaseModel):
@@ -284,6 +286,20 @@ class SimulatorOut(BaseModel):
     result_description: str
     input_schema: dict[str, Any]
     params: list[SimulatorParamOut]
+
+
+class SimulatorProposeIn(BaseModel):
+    request: str = Field(min_length=1)
+    # 画面に出しているこれまでのやり取り（保存はしない）
+    history: list[dict[str, str]] = []
+    # 入力欄の今の引数（JSON の文字列のまま）
+    current_args: str = ""
+
+
+class SimulatorProposeOut(BaseModel):
+    reply: str
+    # 既定値の項目も含めた引数の全体。提案しない場合は None
+    args: dict[str, Any] | None
 
 
 class SimulationTestRun(BaseModel):

@@ -27,7 +27,8 @@ DEFAULT_SYSTEM_PROMPT = """\
 - omikuji: おみくじを引く
 - dice: サイコロを 1 個振る（m は出目の最大）
 - dice_sum: サイコロを n 個振って出目を合計する（m は出目の最大）
-- llm: 答えの決まらない出来事（天気、勝負の行方など）を、条件をプロンプトに書いてシミュレートする"""
+- llm: 答えの決まらない出来事（天気、勝負の行方など）を、条件をプロンプトに書いてシミュレートする
+- nlh_draw: ポーカー（NLH）で、ハンドとボードから勝つ割合をシミュレートする"""
 
 
 class SimulatorChatSettings(AgentSettings):
@@ -36,7 +37,9 @@ class SimulatorChatSettings(AgentSettings):
     # 会話コンテキストとして送る直近の会話の文字数。これより前の会話は送らない
     context_chars: int = Field(default=40000, ge=1)
     # ツールとして見せるシミュレータの名前
-    simulators: list[str] = Field(default_factory=lambda: ["omikuji", "dice", "dice_sum", "llm"])
+    simulators: list[str] = Field(
+        default_factory=lambda: ["omikuji", "dice", "dice_sum", "llm", "nlh_draw"]
+    )
     # 1 ターンの中で、シミュレータを呼んで続きを得る往復の上限。超えたらツールを使わせずに応答させる
     max_tool_rounds: int = Field(default=4, ge=1)
 

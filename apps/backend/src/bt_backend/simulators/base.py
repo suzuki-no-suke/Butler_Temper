@@ -19,6 +19,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 ParamKind = Literal["required", "optional", "global"]
 
+# NLH シミュレータの回数の上限。グローバル設定の既定値も、呼び出しの引数も、これを超えられない
+NLH_HARD_LIMIT = 1000
+
 DEFAULT_MERGE_INSTRUCTION = """\
 次の「条件」で、同じシミュレートを別々に何回か行いました。その結果をすべて読み、
 全体としての結果を、必ず submit_result ツールを呼んで提出してください。
@@ -48,6 +51,12 @@ class GlobalSimulationSettings(BaseModel):
     )
     llm_merge_max_tokens: int = Field(
         default=4096, ge=1, description="LLM シミュレータ: まとめる回の出力の上限（max_tokens）"
+    )
+    nlh_runs: int = Field(
+        default=20,
+        ge=1,
+        le=NLH_HARD_LIMIT,
+        description=f"NLH ドローシミュレータ: シミュレートする回数（{NLH_HARD_LIMIT} 回まで）",
     )
     llm_concurrency: int = Field(
         default=5, ge=1, le=20, description="LLM シミュレータ: 各回を同時に呼ぶ数"
@@ -131,6 +140,19 @@ class Simulator(ABC):
         for key in self.global_only:
             description = GlobalSimulationSettings.model_fields[key].description or ""
             out.append(ParamInfo(name=key, kind="global", description=description, global_key=key))
+        return out
+
+    def defaults(self, settings: GlobalSimulationSettings) -> dict[str, Any]:
+        """任意の項目の既定値（グローバル設定から取るものは、今の設定の値）。"""
+        values = settings.model_dump()
+        out: dict[str, Any] = {}
+        for name, f in self.args_model.model_fields.items():
+            if f.is_required():
+                continue
+            if name in self.global_defaults:
+                out[name] = values[self.global_defaults[name]]
+            else:
+                out[name] = f.get_default(call_default_factory=True)
         return out
 
     def resolve(self, args: dict[str, Any], settings: GlobalSimulationSettings) -> dict[str, Any]:
