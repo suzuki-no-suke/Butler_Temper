@@ -222,6 +222,7 @@ AgentCore 一覧
 
 (決定経緯 : 2026-10-31, docs/decisions/2026-10-31-紙だのみ.md)
 (仕様: docs/specs/シミュレータ.md)
+(図: docs/specs/紙だのみ_動作構造.svg)
 
 
 # 会話をまたぐ記録

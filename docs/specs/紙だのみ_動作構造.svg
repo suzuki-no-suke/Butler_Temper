@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1010" viewBox="0 0 1100 1010" font-family="'Noto Sans CJK JP','Hiragino Sans','Yu Gothic','Meiryo',sans-serif" font-size="14">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+    <style>
+      .box { stroke-width: 1.5; rx: 10; }
+      .llm { fill: #e8f0fe; stroke: #3b6fd6; }
+      .code { fill: #f1f3f4; stroke: #6b7280; }
+      .sim { fill: #e6f4ea; stroke: #2e8b57; }
+      .rec { fill: #fef3e2; stroke: #d98a1c; }
+      .user { fill: #fff; stroke: #333; }
+      .hide { fill: #fdecec; stroke: #c0392b; }
+      .head { font-size: 16px; font-weight: bold; fill: #111; }
+      .body { fill: #222; }
+      .note { font-size: 12px; fill: #444; }
+      .line { stroke: #555; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .num { font-size: 15px; font-weight: bold; fill: #fff; }
+    </style>
+  </defs>
+
+  <rect width="1100" height="1010" fill="#ffffff"/>
+
+  <text x="40" y="42" font-size="22" font-weight="bold" fill="#111">紙だのみ（kamidanomi-wanda）の動作構造</text>
+  <text x="40" y="66" class="note">1 ターンの流れ（①〜④）と、情報の受け渡し。客に見せたくない情報は、ワンダ（LLM）に渡さないことで守る</text>
+
+  <!-- お客さん -->
+  <rect x="40" y="95" width="250" height="64" class="box user"/>
+  <text x="165" y="122" text-anchor="middle" class="head">お客さん</text>
+  <text x="165" y="144" text-anchor="middle" class="note">チャット（本番は音声）</text>
+
+  <!-- ① 丁稚 -->
+  <rect x="360" y="95" width="420" height="150" class="box llm"/>
+  <circle cx="384" cy="118" r="13" fill="#3b6fd6"/><text x="384" y="123" text-anchor="middle" class="num">1</text>
+  <text x="406" y="124" class="head">丁稚（Haiku 5.5）</text>
+  <text x="380" y="150" class="body">直近の会話を読み、report ツールでメモを返す</text>
+  <text x="380" y="172" class="body">・段階／引くもの／足りない項目／印刷できるか</text>
+  <text x="380" y="194" class="body">・会話の終わり／思い出しの要求／「秘密の合言葉」</text>
+  <text x="380" y="216" class="body">・合言葉らしい 3 語（単語リストの言葉に読み替え）</text>
+  <text x="380" y="238" class="body">・開示の条件を満たした秘密</text>
+
+  <!-- ② システム -->
+  <rect x="360" y="285" width="420" height="215" class="box code"/>
+  <circle cx="384" cy="308" r="13" fill="#6b7280"/><text x="384" y="313" text-anchor="middle" class="num">2</text>
+  <text x="406" y="314" class="head">システム（コード）</text>
+  <text x="380" y="340" class="body">合言葉の照合（毎ターン）：記録を引く</text>
+  <text x="396" y="362" class="body">一致 → 対話回数 +1、開示済みの秘密を引き継ぐ</text>
+  <text x="396" y="384" class="body">不一致 → 分かったふりをして名前を開示</text>
+  <text x="396" y="406" class="body">照合済み → 「合言葉二つですかい？」と無視</text>
+  <text x="380" y="430" class="body">秘密の開示（致命的な秘密は早く閉じる指示）</text>
+  <text x="380" y="452" class="body">会話の終わり → 合言葉 3 語を作る（一度だけ）</text>
+  <text x="380" y="474" class="body">丁稚のメモを、ワンダへのメモにする</text>
+  <text x="380" y="494" class="note">レシートで渡す秘密（秘密の合言葉）は、ここで印刷する</text>
+
+  <!-- ③ ワンダ -->
+  <rect x="360" y="540" width="420" height="165" class="box llm"/>
+  <circle cx="384" cy="563" r="13" fill="#3b6fd6"/><text x="384" y="568" text-anchor="middle" class="num">3</text>
+  <text x="406" y="569" class="head">ワンダ（店主、Sonnet 5.5）</text>
+  <text x="380" y="595" class="body">江戸っ子の店主として応答する</text>
+  <text x="380" y="619" class="body">受け取るもの：</text>
+  <text x="396" y="641" class="body">直近の会話／丁稚のメモ／話してよい自分のこと</text>
+  <text x="396" y="663" class="body">／この会話で渡したレシート（種類・運勢・合計）</text>
+  <text x="380" y="689" class="body">print_receipt で印刷を頼む</text>
+
+  <!-- ④ 記録 -->
+  <rect x="360" y="745" width="420" height="72" class="box code"/>
+  <circle cx="384" cy="768" r="13" fill="#6b7280"/><text x="384" y="773" text-anchor="middle" class="num">4</text>
+  <text x="406" y="774" class="head">記録に書く（ターンが成功したとき）</text>
+  <text x="380" y="802" class="body">発言に合言葉 3 語が入っていたら、伝えたとみなす</text>
+
+  <!-- 会話をまたぐ記録 -->
+  <rect x="840" y="285" width="225" height="170" class="box rec"/>
+  <text x="952" y="314" text-anchor="middle" class="head">会話をまたぐ記録</text>
+  <text x="952" y="334" text-anchor="middle" class="note">表 continuationrecord</text>
+  <text x="856" y="362" class="body">Bot ごと（同じ名前なら</text>
+  <text x="856" y="382" class="body">バージョン違いも共有）</text>
+  <text x="856" y="408" class="body">キー：合言葉 3 語（順不同）</text>
+  <text x="856" y="432" class="body">中身：対話回数と</text>
+  <text x="856" y="450" class="body">開示済みの秘密だけ</text>
+
+  <!-- receipt シミュレータ -->
+  <rect x="840" y="540" width="225" height="190" class="box sim"/>
+  <text x="952" y="569" text-anchor="middle" class="head">receipt シミュレータ</text>
+  <text x="856" y="597" class="body">運勢を引く</text>
+  <text x="856" y="619" class="body">合計額を計算する</text>
+  <text x="856" y="645" class="body">末尾にヒント</text>
+  <text x="856" y="663" class="note">（対話回数で選ぶ）</text>
+  <text x="856" y="687" class="body">最初のレシートにカギ</text>
+  <text x="856" y="713" class="note">表の形の文を返す（本番は紙）</text>
+
+  <!-- 矢印 : 縦の流れ -->
+  <path d="M570,245 L570,281" class="line"/>
+  <text x="580" y="268" class="note">メモ</text>
+  <path d="M570,500 L570,536" class="line"/>
+  <text x="580" y="523" class="note">ワンダへのメモ・開示済みの秘密</text>
+  <path d="M570,705 L570,741" class="line"/>
+
+  <!-- お客さん → 丁稚 -->
+  <path d="M290,118 L356,118" class="line"/>
+  <text x="300" y="110" class="note">発言</text>
+
+  <!-- ワンダ → お客さん -->
+  <path d="M360,622 L165,622 L165,163" class="line"/>
+  <text x="175" y="600" class="note">応答と、印刷した</text>
+  <text x="175" y="616" class="note">レシート（内訳に表示）</text>
+
+  <!-- システム ⇄ 記録 -->
+  <path d="M780,340 L836,340" class="line"/>
+  <text x="784" y="332" class="note">引く</text>
+  <!-- ④ → 記録 -->
+  <path d="M780,781 L810,781 L810,430 L836,430" class="line"/>
+  <text x="790" y="772" class="note">書く</text>
+
+  <!-- ワンダ → receipt -->
+  <path d="M780,600 L836,600" class="line"/>
+  <text x="784" y="590" class="note">印刷</text>
+  <!-- receipt → ワンダ -->
+  <path d="M836,640 L784,640" class="line"/>
+  <text x="784" y="656" class="note">運勢・合計</text>
+  <!-- システム → receipt（秘密の合言葉） -->
+  <path d="M780,480 L825,480 L825,536" class="line"/>
+
+  <!-- 注記 : print_receipt の確認 -->
+  <text x="792" y="725" class="note" text-anchor="end">項目が揃っていなければ印刷せず、</text>
+  <text x="792" y="740" class="note" text-anchor="end">足りない項目をワンダに返す</text>
+
+  <!-- ワンダに渡さないもの -->
+  <rect x="40" y="850" width="1025" height="120" class="box hide"/>
+  <text x="60" y="878" class="head">ワンダに渡さないもの</text>
+  <text x="60" y="904" class="body">・カギ（スクラップヤードにようこそ）　・秘密の合言葉の中身　・対話回数　・レシート末尾の印字（ヒント・カギ）</text>
+  <text x="60" y="928" class="body">・まだ開示していない秘密（名前・見た目・味覚・住居など）　・前の会話の中身（本人にも他人にも渡さない）</text>
+  <text x="60" y="954" class="note">再開した会話では、開示済みの秘密の短い要約（「ワンダって名前までお話ししたお客さんだね！」）だけを伝える。回数は絶対に伝えない</text>
+
+  <!-- 凡例 -->
+  <rect x="40" y="200" width="16" height="16" rx="3" class="llm" stroke-width="1.5"/><text x="64" y="213" class="note">LLM</text>
+  <rect x="40" y="226" width="16" height="16" rx="3" class="code" stroke-width="1.5"/><text x="64" y="239" class="note">コード</text>
+  <rect x="40" y="252" width="16" height="16" rx="3" class="sim" stroke-width="1.5"/><text x="64" y="265" class="note">シミュレータ</text>
+  <rect x="40" y="278" width="16" height="16" rx="3" class="rec" stroke-width="1.5"/><text x="64" y="291" class="note">会話をまたぐ記録（DB）</text>
+</svg>
