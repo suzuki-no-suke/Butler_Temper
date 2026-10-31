@@ -46,6 +46,8 @@ class TurnOutcome:
     model_unavailable: bool = False
     # HTTP でやり取りした内容。各要素の "label" は Agent 内での呼び出しの役割
     exchanges: list[dict[str, Any]] = field(default_factory=list)
+    # 会話をまたぐ記録に書くもの（キー -> 中身）。エラーのターンでは書かない
+    continuations: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -82,3 +84,17 @@ class SimulatorAccess:
 
     tools: list[SimulatorTool] = field(default_factory=list)
     call: Callable[[str, dict[str, Any]], SimulationCall] = _no_simulator
+
+
+def _no_record(key: str) -> dict[str, Any] | None:
+    return None
+
+
+@dataclass
+class ContinuationAccess:
+    """会話をまたぐ記録を読む口。同じ Agent（名前が同じならバージョン違いを含む）の記録だけを引く。
+
+    書くときは、TurnResult.continuations に入れる（エラーのターンでは書かない）。
+    """
+
+    get: Callable[[str], dict[str, Any] | None] = _no_record

@@ -34,7 +34,7 @@ def _tool_use(name: str, args: dict[str, Any], model: str = "claude-sonnet-5-5")
 
 def test_simulators_list_param_kinds(client: TestClient) -> None:
     simulators = {s["name"]: s for s in client.get("/api/simulators").json()}
-    assert set(simulators) == {"omikuji", "dice", "dice_sum", "llm", "nlh_draw"}
+    assert set(simulators) == {"omikuji", "dice", "dice_sum", "llm", "nlh_draw", "receipt"}
     kinds = {p["name"]: p["kind"] for p in simulators["llm"]["params"]}
     assert kinds["prompt"] == "required"
     assert kinds["runs"] == "optional"

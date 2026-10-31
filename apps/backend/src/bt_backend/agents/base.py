@@ -5,7 +5,13 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from bt_backend.agents.llm import LlmSession
-from bt_backend.agents.types import AgentInfo, ChatTurn, Interrupt, SimulatorAccess
+from bt_backend.agents.types import (
+    AgentInfo,
+    ChatTurn,
+    ContinuationAccess,
+    Interrupt,
+    SimulatorAccess,
+)
 
 
 class AgentPause(Exception):
@@ -32,6 +38,8 @@ class TurnContext:
     interrupts: list[Interrupt] = field(default_factory=list)
     # 使えるシミュレータ。呼ぶかどうかは Agent が決める
     simulators: SimulatorAccess = field(default_factory=SimulatorAccess)
+    # 会話をまたぐ記録を読む口
+    continuations: ContinuationAccess = field(default_factory=ContinuationAccess)
 
 
 @dataclass
@@ -39,6 +47,8 @@ class TurnResult:
     text: str
     parts: list[dict[str, Any]] | None = None
     state: dict[str, Any] = field(default_factory=dict)
+    # 会話をまたぐ記録に書くもの（キー -> 中身）
+    continuations: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class Agent[S: AgentSettings](ABC):

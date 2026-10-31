@@ -274,3 +274,22 @@ class SimulationSettingsRow(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     values: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ContinuationRecord(SQLModel, table=True):
+    """会話をまたいで Agent が引き継ぐ記録（つづきの合言葉など）。
+
+    Bot（同じ名前の Agent。バージョン違いを含む）ごとに、キーで引く。中身は AgentCore が決める。
+    """
+
+    __table_args__ = (UniqueConstraint("bot_id", "key"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    bot_id: int = Field(foreign_key="bot.id", index=True)
+    key: str
+    # 記録を書いた会話（チャット）またはエージェント間対話
+    conversation_id: int | None = Field(default=None, foreign_key="conversation.id")
+    dialogue_id: int | None = Field(default=None, foreign_key="dialogue.id")
+    data: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)

@@ -4,6 +4,7 @@ from sqlmodel import Session, col, select
 
 from bt_backend.agents import ChatTurn, Interrupt, run_turn
 from bt_backend.config import get_settings
+from bt_backend.continuations import continuation_access, save_continuations
 from bt_backend.models import (
     Bot,
     BotVersion,
@@ -142,6 +143,7 @@ def send_message(
         api_keys(),
         [Interrupt(id=i.id or 0, message=i.message, targets=list(i.targets)) for i in interrupts],
         access_for(session, raw_session, caller, api_keys()),
+        continuation_access(session, bot.id or 0),
     )
     raw.exchanges = outcome.exchanges
     raw.error = outcome.error
@@ -160,6 +162,10 @@ def send_message(
             agent_state=outcome.state,
         )
         conversation.agent_state = outcome.state
+        if outcome.continuations:
+            save_continuations(
+                session, bot.id or 0, outcome.continuations, conversation_id=conversation.id
+            )
     else:
         # エラーは保存して止める
         reply = Message(

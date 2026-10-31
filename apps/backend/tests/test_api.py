@@ -158,8 +158,11 @@ def test_seed_creates_one_bot_per_agent_only_once(client: TestClient) -> None:
         "templates": 1,
     }
     assert seed() == {"agents": 0, "conversation_agents": 0, "templates": 0}
-    names = {b["agent_id"] for b in client.get("/api/bots").json()}
-    assert "secret-keeper" in names
+    bots = client.get("/api/bots").json()
+    assert "secret-keeper" in {b["agent_id"] for b in bots}
+    assert {"name": "紙だのみマスター ワンダさん", "agent_id": "kamidanomi-wanda"}.items() <= next(
+        b for b in bots if b["agent_id"] == "kamidanomi-wanda"
+    ).items()
 
 
 def test_conversation_list_has_preview_and_count(

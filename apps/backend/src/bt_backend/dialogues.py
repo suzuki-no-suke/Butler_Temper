@@ -9,6 +9,7 @@ import unicodedata
 from sqlmodel import Session, col, select
 
 from bt_backend.agents import ChatTurn, TurnOutcome, run_conversation_turn, run_turn
+from bt_backend.continuations import continuation_access, save_continuations
 from bt_backend.models import (
     Bot,
     BotVersion,
@@ -177,6 +178,7 @@ def advance_dialogue(
             dict(dialogue.agent_state or {}),
             api_keys(),
             simulators=access_for(session, raw_session, callers["agent"], api_keys()),
+            continuations=continuation_access(session, bot.id or 0),
         )
         raw = _save_raw(raw_session, dialogue_id, bot.agent_id, outcome)
         if outcome.error is not None:
@@ -195,6 +197,10 @@ def advance_dialogue(
                 )
             )
             dialogue.agent_state = outcome.state
+            if outcome.continuations:
+                save_continuations(
+                    session, bot.id or 0, outcome.continuations, dialogue_id=dialogue_id
+                )
 
     for m in saved:
         session.add(m)

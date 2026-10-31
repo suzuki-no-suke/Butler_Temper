@@ -87,3 +87,22 @@
 - 構成案を worknote/artifacts/紙だのみワンダ_構成案.md にまとめた（未決の案。回答で決まったところに印を付けた）
 - 残る点をチャットで提示（実装はまだ）
 - メモリ : このターンでは変更していない
+- （7 回目の回答と発注。ユーザーの言葉の要約）
+  - ヒントはレシートの末尾に印字する。ワンダからは言わない
+  - 合言葉はそれを伝えた会話に結びつく（Claude の読みのとおり）。他人が間違って使うことも許す
+  - 一致しない合言葉には、分かったふりをして名前だけ開示する
+  - 秘密の合言葉は秘密の一覧に含める
+  - 致命的な秘密は合言葉。ほかに住居（「東京都練馬区の、駅前横次元」。「横次元」という表現をする）を致命的な秘密として足す
+  - どの種類を印刷しているかは丁稚が覚える
+  - ここでいったん実装してほしい。自律的に埋めた事柄も後で教えてほしい
+- 実装
+  - 会話をまたぐ記録 : 表 continuationrecord（マイグレーション 12a1c16b003c）、continuations.py、ContinuationAccess（TurnContext.continuations で読む）、TurnResult.continuations（成功したターンだけ書く）。会話とエージェント間対話の両方
+  - receipt シミュレータ（simulators/receipt.py）。運勢と合計額はシミュレータが出す
+  - AgentCore kamidanomi-wanda（agents/kamidanomi.py）と、合言葉の単語 300 語（agents/kamidanomi_words.py）
+  - seed で Agent「紙だのみマスター ワンダさん」を作る（既に Agent がある DB にも作る）
+  - テスト 6 件を追加し、2 件を直した（シミュレータ一覧に receipt、seed の Agent 名）。backend 86 件
+- チェック : npm run check（backend の ruff / mypy / pytest、frontend、migrate check）すべて通過
+- 実際の API では動かしていない（費用がかかるため、伝える前に動かさない方針）
+- 資料 : docs/specs/AgentCore一覧.md（紙だのみ・会話をまたぐ記録）、docs/specs/シミュレータ.md（レシート）、docs/specs/プロジェクト辞書.md（紙だのみ関連の呼称）、README、docs/decisions/2026-10-31-紙だのみ.md（新規。Claude が決めたことを分けて書いた）
+  - worknote/artifacts/紙だのみワンダ_構成案.md は実装前の案のまま。実装と食い違う（ヒントの置き場所など）
+- メモリ : このターンでは変更していない

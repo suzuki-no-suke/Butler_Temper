@@ -25,6 +25,7 @@ from bt_backend.agents.runner import (
 from bt_backend.agents.types import (
     AgentInfo,
     ChatTurn,
+    ContinuationAccess,
     Interrupt,
     SimulationCall,
     SimulatorAccess,
@@ -36,6 +37,7 @@ __all__ = [
     "AgentInfo",
     "ChatLine",
     "ChatTurn",
+    "ContinuationAccess",
     "Interrupt",
     "InvalidSettings",
     "LlmSession",

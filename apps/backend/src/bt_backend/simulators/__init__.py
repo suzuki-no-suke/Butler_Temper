@@ -16,6 +16,7 @@ from bt_backend.simulators.base import (
 from bt_backend.simulators.chance import DiceSimulator, DiceSumSimulator, OmikujiSimulator
 from bt_backend.simulators.llm import LlmSimulator
 from bt_backend.simulators.nlh import NlhDrawSimulator
+from bt_backend.simulators.receipt import ReceiptSimulator
 
 _SIMULATORS: list[Simulator] = [
     OmikujiSimulator(),
@@ -23,6 +24,7 @@ _SIMULATORS: list[Simulator] = [
     DiceSumSimulator(),
     LlmSimulator(),
     NlhDrawSimulator(),
+    ReceiptSimulator(),
 ]
 SIMULATORS: dict[str, Simulator] = {s.name: s for s in _SIMULATORS}
 
