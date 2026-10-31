@@ -7,6 +7,8 @@ import ChatPage from './pages/ChatPage'
 import DialogueHistoryPage from './pages/DialogueHistoryPage'
 import DialoguePage from './pages/DialoguePage'
 import HistoryPage from './pages/HistoryPage'
+import ParallelPage from './pages/ParallelPage'
+import ParallelSettingsPage from './pages/ParallelSettingsPage'
 import SimulationRunsPage from './pages/SimulationRunsPage'
 import SimulatorsPage from './pages/SimulatorsPage'
 import TemplatesPage from './pages/TemplatesPage'
@@ -28,6 +30,9 @@ export default function App() {
           <span className="nav-separator" />
           <NavLink to="/simulators">シミュレータ</NavLink>
           <NavLink to="/simulation-runs">シミュレーション履歴</NavLink>
+          <span className="nav-separator" />
+          <NavLink to="/parallel">並行会話</NavLink>
+          <NavLink to="/parallel-settings">並行会話設定</NavLink>
         </nav>
       </header>
       <main className="app-main">
@@ -65,6 +70,9 @@ export default function App() {
           <Route path="/simulators/:simulatorName" element={<SimulatorsPage />} />
           <Route path="/simulation-runs" element={<SimulationRunsPage />} />
           <Route path="/simulation-runs/:runId" element={<SimulationRunsPage />} />
+          <Route path="/parallel" element={<ParallelPage />} />
+          <Route path="/parallel/:parallelId" element={<ParallelPage />} />
+          <Route path="/parallel-settings" element={<ParallelSettingsPage />} />
         </Routes>
       </main>
     </HashRouter>

@@ -17,4 +17,5 @@ export const CALLER_LABEL: Record<SimulationCaller, string> = {
   conversation: 'チャット',
   dialogue: 'エージェント間対話',
   webui: 'WebUI（テスト実行）',
+  parallel: '並行会話の候補',
 }

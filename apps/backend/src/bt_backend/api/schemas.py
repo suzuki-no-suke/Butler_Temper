@@ -144,6 +144,9 @@ class ConversationOut(BaseModel):
     status: str
     agent_state: dict[str, Any] | None
     resumed_from_id: int | None
+    # 並行会話の候補を採用して作った会話なら、その候補と並行会話
+    parallel_candidate_id: int | None = None
+    parallel_conversation_id: int | None = None
     created_at: datetime
     message_count: int
     # 最初の利用者の発言（一覧での見分け用）
@@ -174,6 +177,7 @@ class RawCallOut(BaseModel):
     id: int
     conversation_id: int | None
     dialogue_id: int | None
+    parallel_candidate_id: int | None = None
     agent_id: str
     source_hash: str
     exchanges: list[dict[str, Any]]
@@ -316,6 +320,7 @@ class SimulationRunOut(BaseModel):
     message_id: int | None
     dialogue_id: int | None
     dialogue_message_id: int | None
+    parallel_candidate_id: int | None = None
     agent_id: str
     args: dict[str, Any]
     params: dict[str, Any] | None
@@ -344,3 +349,54 @@ class SimulationSettingsOut(BaseModel):
     values: dict[str, Any]
     defaults: dict[str, Any]
     descriptions: dict[str, str]
+
+
+class ParallelStart(BaseModel):
+    # 分かれる位置（この Agent の発言まで写す）
+    message_id: int
+
+
+class ParallelRoundCreate(BaseModel):
+    content: str = Field(min_length=1)
+    count: int = Field(default=10, ge=1, le=50)
+
+
+class ParallelCandidateOut(BaseModel):
+    id: int
+    index: int
+    status: str
+    text: str | None
+    parts: list[dict[str, Any]] | None
+    agent_state: dict[str, Any] | None
+    error: str | None
+    raw_call_id: int | None
+    created_at: datetime
+    finished_at: datetime | None
+    # この候補を採用して作った会話
+    conversation_ids: list[int]
+
+
+class ParallelRoundOut(BaseModel):
+    id: int
+    content: str
+    count: int
+    created_at: datetime
+    candidates: list[ParallelCandidateOut]
+
+
+class ParallelConversationOut(BaseModel):
+    id: int
+    bot_id: int
+    bot_name: str
+    bot_version: int
+    source_kind: str
+    created_at: datetime
+    message_count: int
+    round_count: int
+    # 分かれる位置の Agent の発言（一覧での見分け用）
+    preview: str
+
+
+class ParallelConversationDetail(ParallelConversationOut):
+    messages: list[MessageOut]
+    rounds: list[ParallelRoundOut]

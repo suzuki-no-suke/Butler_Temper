@@ -19,6 +19,8 @@ class RawCall(RawBase, table=True):
     conversation_id: int | None = Field(default=None, index=True)
     # エージェント間対話の記録なら、その Dialogue.id（conversation_id は None）
     dialogue_id: int | None = Field(default=None, index=True)
+    # 並行会話の候補の記録なら、その ParallelCandidate.id（conversation_id は None）
+    parallel_candidate_id: int | None = Field(default=None, index=True)
     agent_id: str = Field(sa_column_kwargs={"server_default": ""})
     # Agents モジュールのソースのハッシュ（data/agent_snapshots/<hash>.zip）
     source_hash: str = Field(index=True)

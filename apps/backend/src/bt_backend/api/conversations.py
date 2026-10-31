@@ -24,6 +24,8 @@ from bt_backend.models import (
     ConversationInterrupt,
     Message,
     MessageComment,
+    ParallelCandidate,
+    ParallelRound,
 )
 from bt_backend.raw_models import RawCall
 from bt_backend.services import (
@@ -45,8 +47,16 @@ def _conversation_out(session: Session, c: Conversation) -> ConversationOut:
     assert bot is not None and version is not None and c.id is not None
     messages = messages_of(session, c.id)
     first_user = next((m.content for m in messages if m.role == "user"), "")
+    parallel_id = None
+    if c.parallel_candidate_id is not None:
+        candidate = session.get(ParallelCandidate, c.parallel_candidate_id)
+        assert candidate is not None
+        round_ = session.get(ParallelRound, candidate.round_id)
+        assert round_ is not None
+        parallel_id = round_.parallel_conversation_id
     return ConversationOut(
         **c.model_dump(),
+        parallel_conversation_id=parallel_id,
         bot_name=bot.name,
         bot_version=version.version,
         message_count=len(messages),

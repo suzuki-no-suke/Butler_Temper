@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import {
   api,
   conversationBotApi,
@@ -13,18 +13,13 @@ import {
 import ConversationComments from '../components/ConversationComments'
 import EvaluationSummary from '../components/EvaluationSummary'
 import MessageCommentEditor from '../components/MessageCommentEditor'
+import MessageParts from '../components/MessageParts'
 import RawPanel from '../components/RawPanel'
 
 // 「自動で進める」で一度に進められるターン数の上限
 const MAX_AUTO_TURNS = 50
 
 const SPEAKER_LABEL = { conversation: '会話用エージェント', agent: 'Agent' } as const
-const PART_LABEL: Record<string, string> = {
-  main: 'Agent（メイン）',
-  sub: 'Agent（サブ）',
-  system: 'システム',
-  simulation: 'シミュレータ',
-}
 
 const label = (m: DialogueMessage) =>
   m.role === 'error' ? `エラー（${SPEAKER_LABEL[m.speaker]}）` : SPEAKER_LABEL[m.speaker]
@@ -103,6 +98,17 @@ export default function DialoguePage() {
     try {
       const d = await api.createDialogue(conversationBotId, botId)
       navigate(`/dialogue/${d.id}`)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  const startParallel = async (messageId: number) => {
+    if (!current) return
+    setError(null)
+    try {
+      const p = await api.startParallelFromDialogue(current.id, messageId)
+      navigate(`/parallel/${p.id}`)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -239,20 +245,7 @@ export default function DialoguePage() {
                   className={`message-group${m.id === rawMessage?.id ? ' raw-selected' : ''}`}
                 >
                   {m.parts && m.role === 'speech' ? (
-                    m.parts.map((p, i) => (
-                      <div key={i} className={`message assistant speaker-${p.speaker}`}>
-                        <div className="message-role">
-                          {PART_LABEL[p.speaker] ?? p.speaker}
-                          {p.secret && `：${p.secret}`}
-                        </div>
-                        <div className="message-content">{p.text}</div>
-                        {p.simulation_run_id != null && (
-                          <Link to={`/simulation-runs/${p.simulation_run_id}`}>
-                            実行記録 #{p.simulation_run_id} を見る
-                          </Link>
-                        )}
-                      </div>
-                    ))
+                    <MessageParts parts={m.parts} />
                   ) : (
                     <div
                       className={`message ${
@@ -270,6 +263,15 @@ export default function DialoguePage() {
                       onClick={() => setRawMessageId(m.id)}
                     >
                       この発言の RAW を見る
+                    </button>
+                  )}
+                  {m.role === 'speech' && m.speaker === 'agent' && (
+                    <button
+                      type="button"
+                      className="link"
+                      onClick={() => startParallel(m.id)}
+                    >
+                      ここから並行会話
                     </button>
                   )}
                   {m.role === 'speech' && (

@@ -649,3 +649,40 @@ button.raw-select {
   max-height: 360px;
   overflow: auto;
 }
+
+/* 並行会話 */
+.parallel-round {
+  margin: 1.5rem 0;
+}
+
+.parallel-candidates {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+.parallel-candidate {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: var(--panel);
+}
+
+.parallel-candidate-head,
+.parallel-candidate-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.parallel-candidate-head .status-failed {
+  color: var(--error);
+}
+
+.parallel-candidate-head .status-pending,
+.parallel-candidate-head .status-running {
+  color: var(--muted);
+}

@@ -10,6 +10,7 @@ from bt_backend.api import (
     conversation_bots,
     conversations,
     dialogues,
+    parallel,
     settings_chat,
     simulations,
     templates,
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(templates.router)
     app.include_router(dialogues.router)
     app.include_router(simulations.router)
+    app.include_router(parallel.router)
     return app
 
 

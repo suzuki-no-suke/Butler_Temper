@@ -46,6 +46,8 @@ class Conversation(SQLModel, table=True):
     status: str = "active"
     # エラーで止まった会話を引き継いで作った場合の、元の会話
     resumed_from_id: int | None = Field(default=None, foreign_key="conversation.id")
+    # 並行会話の候補を採用して作った場合の、その候補
+    parallel_candidate_id: int | None = Field(default=None, foreign_key="parallelcandidate.id")
     # Agent の状態（メモリなど）。Agent が自分で保存する
     agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)
@@ -243,13 +245,17 @@ class SimulationRun(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     simulator: str = Field(index=True)
     # 呼び出し元: conversation（チャットの会話）/ dialogue（エージェント間対話）
-    # / webui（テスト実行）
+    # / webui（テスト実行）/ parallel（並行会話の候補）
     caller: str = Field(index=True)
     conversation_id: int | None = Field(default=None, foreign_key="conversation.id", index=True)
     # 呼び出したターンの発言（応答、またはエラー）
     message_id: int | None = Field(default=None, foreign_key="message.id")
     dialogue_id: int | None = Field(default=None, foreign_key="dialogue.id", index=True)
     dialogue_message_id: int | None = Field(default=None, foreign_key="dialoguemessage.id")
+    # 並行会話の候補を作る中で呼んだ場合の、その候補
+    parallel_candidate_id: int | None = Field(
+        default=None, foreign_key="parallelcandidate.id", index=True
+    )
     # 呼び出した AgentCore（テスト実行では空）
     agent_id: str = ""
     # 呼ぶ側が渡した引数
@@ -292,4 +298,81 @@ class ContinuationRecord(SQLModel, table=True):
     dialogue_id: int | None = Field(default=None, foreign_key="dialogue.id")
     data: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ParallelConversation(SQLModel, table=True):
+    """並行会話。分かれる位置までの会話を写して持ち、同じ入力への応答（候補）を何度も作る。
+
+    元の会話をたどらずに済むよう、分かれる位置までの発言は ParallelMessage にすべて写す。
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    bot_id: int = Field(foreign_key="bot.id", index=True)
+    # 元の会話・対話が固定していた Agent のバージョン
+    bot_version_id: int = Field(foreign_key="botversion.id")
+    # 写した元: conversation（チャットの会話）/ dialogue（エージェント間対話）。記録のためだけに持つ
+    source_kind: str
+    # 外部キーにはしない（会話 → 候補 → 並行会話 → 会話 の循環を避けるため）
+    source_conversation_id: int | None = None
+    source_dialogue_id: int | None = Field(default=None, foreign_key="dialogue.id")
+    # 分かれる位置での Agent の状態
+    agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ParallelMessage(SQLModel, table=True):
+    """並行会話に写した、分かれる位置までの発言。
+
+    エージェント間対話から写したときは、会話用エージェントの発言を user にする。
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    parallel_conversation_id: int = Field(foreign_key="parallelconversation.id", index=True)
+    seq: int
+    # user / assistant
+    role: str
+    content: str
+    raw_call_id: int | None = None
+    parts: list[dict[str, Any]] | None = Field(default=None, sa_column=Column(JSON))
+    agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    # 元の発言の日時
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ParallelRound(SQLModel, table=True):
+    """並行会話の 1 回分。一つの利用者の入力に対して、count 個の候補を作る。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    parallel_conversation_id: int = Field(foreign_key="parallelconversation.id", index=True)
+    content: str
+    count: int
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ParallelCandidate(SQLModel, table=True):
+    """並行会話の候補一つ。Agent の 1 ターン分の結果を、採用するまで会話とは別に持つ。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    round_id: int = Field(foreign_key="parallelround.id", index=True)
+    # 回の中での番号（0 から）
+    index: int
+    # pending / running / succeeded / failed
+    status: str = "pending"
+    text: str | None = None
+    parts: list[dict[str, Any]] | None = Field(default=None, sa_column=Column(JSON))
+    agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    # 採用したときに、会話をまたぐ記録に書くもの
+    continuations: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    error: str | None = None
+    raw_call_id: int | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+    finished_at: datetime | None = None
+
+
+class ParallelSettingsRow(SQLModel, table=True):
+    """並行会話の設定。1 行だけ持つ。バージョン管理はしない。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    values: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     updated_at: datetime = Field(default_factory=utcnow)

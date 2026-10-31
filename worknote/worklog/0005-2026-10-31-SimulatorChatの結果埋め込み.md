@@ -136,3 +136,22 @@
   - 割込み要求は一旦なし。今後使う必要が出たら、分かれる位置で伝えていない割込み要求を、すべての候補に伝えることになると思う
 - 決まった構造の整理と、残る点をチャットで提示（実装はまだ）
 - メモリ : このターンでは変更していない
+- （12 回目の回答と発注。音声入力。ユーザーの言葉の要約）
+  - エージェント間対話も、フォークではなく「ここから並行会話」でよい
+  - 同じ並行会話から何度でも採用できるようにする
+  - 並行会話には、分かれる位置までの本文だけでなく、会話の記録を全部写して持つ。採用して分岐したものをたどるときに、元の履歴をたどらずに済むようにするため
+  - ある時点からの並行会話をいくつも保存して見られるようにしたい
+  - 並行会話の画面から元の会話に戻れる必要は一切無い。並行会話の記録はその画面だけで見る
+  - これで実装できるか（実装の依頼と受け取った）
+- 実装
+  - Backend : 表 parallelconversation / parallelmessage / parallelround / parallelcandidate / parallelsettingsrow、conversation と simulationrun に parallel_candidate_id、RAW の rawcall に parallel_candidate_id（マイグレーション main f98f619c6b1a・raw 05d3ef57237c）。parallel.py（写す・回を作る・候補を並行に作る・採用）、API（/api/conversations/{id}/parallel、/api/dialogues/{id}/parallel、/api/parallel-conversations、/rounds、/api/parallel-candidates/{id}/adopt、/api/parallel-settings）
+  - Frontend : 並行会話の画面（一覧・写した発言・回と候補・採用・RAW）、並行会話設定の画面、チャットとエージェント間対話の Agent の発言に「ここから並行会話」、採用した会話に元の並行会話へのリンク。発言の内訳の表示を MessageParts に切り出して共通にした
+  - テスト 5 件を追加（backend 91 件）
+- 気づいたこと : 会話 → 候補 → 並行会話 → 会話 の外部キーが循環し、migrate check が警告を出した。並行会話の source_conversation_id を外部キーにしないことで解いた
+- 気づいたこと : 紙だのみで、元の会話がすでに合言葉を伝えた後に並行会話をすると、採用した会話も同じ合言葉の記録を書き直す（後に書いた会話が記録に残る）
+- 作業の誤り : マイグレーションを作るとき、一時フォルダを指す環境変数が引き継がれず、リポジトリの data（git 管理外。この作業環境のもの）の DB を最新に上げてしまった。中身は空に近く、git には影響しない
+- チェック : npm run check（backend の ruff / mypy / pytest、frontend、migrate check）すべて通過
+- 画面での確認 : scratchpad の別の data フォルダに、API を呼ばずに見本の並行会話（完了 2・失敗 1・生成中 1 の候補）を DB へ直接入れ、並行会話の画面・採用してチャット画面に移る流れ・並行会話設定の画面をブラウザで確かめた。実際の API での候補の生成は確かめていない
+- 資料 : docs/specs/アプリケーション仕様.md（`# 並行会話` を追加）、docs/specs/プロジェクト辞書.md（並行会話関連の呼称）、docs/specs/シミュレータ.md（呼び出し元に parallel）、docs/decisions/2026-10-31-並行会話.md（新規）
+  - docs/specs/アプリケーション仕様.md の `# 作業手順` の 1 の途中に、`# エージェント間対話` の項がまるごと重なって入っていた（2026-10-30 の追加のときの崩れと見られる）。本来の項と同じ内容であることを確かめて、重複を取り除いた（中身は変えていない）
+- メモリ : このターンでは変更していない

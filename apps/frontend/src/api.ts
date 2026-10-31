@@ -91,6 +91,7 @@ export interface RawCall {
   id: number
   conversation_id: number | null
   dialogue_id: number | null
+  parallel_candidate_id: number | null
   agent_id: string
   source_hash: string
   exchanges: RawExchange[]
@@ -128,6 +129,9 @@ export interface Conversation {
   status: 'active' | 'stopped'
   agent_state: Record<string, unknown> | null
   resumed_from_id: number | null
+  // 並行会話の候補を採用して作った会話なら、その候補と並行会話
+  parallel_candidate_id: number | null
+  parallel_conversation_id: number | null
   created_at: string
   message_count: number
   preview: string
@@ -326,7 +330,7 @@ export interface Simulator {
   params: SimulatorParam[]
 }
 
-export type SimulationCaller = 'conversation' | 'dialogue' | 'webui'
+export type SimulationCaller = 'conversation' | 'dialogue' | 'webui' | 'parallel'
 
 export interface SimulationRun {
   id: number
@@ -336,6 +340,7 @@ export interface SimulationRun {
   message_id: number | null
   dialogue_id: number | null
   dialogue_message_id: number | null
+  parallel_candidate_id: number | null
   agent_id: string
   args: Record<string, unknown>
   params: Record<string, unknown> | null
@@ -364,6 +369,53 @@ export interface SimulationSettings {
   values: Record<string, unknown>
   defaults: Record<string, unknown>
   descriptions: Record<string, string>
+}
+
+// 並行会話の候補一つ（Agent の 1 ターン分の結果）
+export interface ParallelCandidate {
+  id: number
+  index: number
+  status: 'pending' | 'running' | 'succeeded' | 'failed'
+  text: string | null
+  parts: MessagePart[] | null
+  agent_state: Record<string, unknown> | null
+  error: string | null
+  raw_call_id: number | null
+  created_at: string
+  finished_at: string | null
+  // この候補を採用して作った会話
+  conversation_ids: number[]
+}
+
+// 一つの入力に対して候補を作った 1 回分
+export interface ParallelRound {
+  id: number
+  content: string
+  count: number
+  created_at: string
+  candidates: ParallelCandidate[]
+}
+
+export interface ParallelConversation {
+  id: number
+  bot_id: number
+  bot_name: string
+  bot_version: number
+  // 写した元: conversation（チャットの会話）/ dialogue（エージェント間対話）
+  source_kind: 'conversation' | 'dialogue'
+  created_at: string
+  message_count: number
+  round_count: number
+  preview: string
+}
+
+export interface ParallelConversationDetail extends ParallelConversation {
+  messages: Message[]
+  rounds: ParallelRound[]
+}
+
+export interface ParallelSettings {
+  concurrency: number
 }
 
 export const api = {
@@ -414,6 +466,25 @@ export const api = {
   },
   simulationRun: (id: number) => request<SimulationRunDetail>(`/api/simulation-runs/${id}`),
   simulationSettings: () => request<SimulationSettings>('/api/simulation-settings'),
+  startParallelFromConversation: (conversationId: number, messageId: number) =>
+    post<ParallelConversation>(`/api/conversations/${conversationId}/parallel`, {
+      message_id: messageId,
+    }),
+  startParallelFromDialogue: (dialogueId: number, messageId: number) =>
+    post<ParallelConversation>(`/api/dialogues/${dialogueId}/parallel`, { message_id: messageId }),
+  parallelConversations: () => request<ParallelConversation[]>('/api/parallel-conversations'),
+  parallelConversation: (id: number) =>
+    request<ParallelConversationDetail>(`/api/parallel-conversations/${id}`),
+  createParallelRound: (id: number, content: string, count: number) =>
+    post<ParallelRound>(`/api/parallel-conversations/${id}/rounds`, { content, count }),
+  adoptParallelCandidate: (candidateId: number) =>
+    post<Conversation>(`/api/parallel-candidates/${candidateId}/adopt`, {}),
+  parallelSettings: () => request<ParallelSettings>('/api/parallel-settings'),
+  saveParallelSettings: (values: ParallelSettings) =>
+    request<ParallelSettings>('/api/parallel-settings', {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    }),
   saveSimulationSettings: (values: Record<string, unknown>) =>
     request<SimulationSettings>('/api/simulation-settings', {
       method: 'PUT',

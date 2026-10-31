@@ -21,10 +21,11 @@ SETTINGS_ROW_ID = 1
 class Caller:
     """シミュレータの呼び出し元。"""
 
-    kind: Literal["conversation", "dialogue", "webui"]
+    kind: Literal["conversation", "dialogue", "webui", "parallel"]
     agent_id: str = ""
     conversation_id: int | None = None
     dialogue_id: int | None = None
+    parallel_candidate_id: int | None = None
     # このターンで記録した実行の id（ターンの発言を保存した後に、発言と結びつける）
     run_ids: list[int] = field(default_factory=list)
 
@@ -68,6 +69,7 @@ def simulate(
         caller=caller.kind,
         conversation_id=caller.conversation_id,
         dialogue_id=caller.dialogue_id,
+        parallel_candidate_id=caller.parallel_candidate_id,
         agent_id=caller.agent_id,
         args=args,
         status="invalid",

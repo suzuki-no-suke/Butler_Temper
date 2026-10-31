@@ -4,15 +4,10 @@ import { api, type Bot, type Conversation, type ConversationDetail, type Message
 import ConversationComments from '../components/ConversationComments'
 import EvaluationSummary from '../components/EvaluationSummary'
 import MessageCommentEditor from '../components/MessageCommentEditor'
+import MessageParts from '../components/MessageParts'
 import RawPanel from '../components/RawPanel'
 
 const ROLE_LABEL = { user: 'あなた', assistant: 'Agent', error: 'エラー' } as const
-const SPEAKER_LABEL: Record<string, string> = {
-  main: 'Agent（メイン）',
-  sub: 'Agent（サブ）',
-  system: 'システム',
-  simulation: 'シミュレータ',
-}
 
 export default function ChatPage() {
   const { conversationId } = useParams()
@@ -103,6 +98,17 @@ export default function ChatPage() {
     }
   }
 
+  const startParallel = async (messageId: number) => {
+    if (!current) return
+    setError(null)
+    try {
+      const p = await api.startParallelFromConversation(current.id, messageId)
+      navigate(`/parallel/${p.id}`)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   const send = async (e: FormEvent) => {
     e.preventDefault()
     if (!current || input.trim() === '') return
@@ -183,6 +189,14 @@ export default function ChatPage() {
                 会話 #{current.resumed_from_id} を引き継いだ会話です。
               </p>
             )}
+            {current.parallel_conversation_id && (
+              <p className="hint">
+                <Link to={`/parallel/${current.parallel_conversation_id}`}>
+                  並行会話 #{current.parallel_conversation_id}
+                </Link>{' '}
+                の候補を採用して作った会話です。
+              </p>
+            )}
             <ol className="messages">
               {current.messages.map((m) => (
                 <li
@@ -190,20 +204,7 @@ export default function ChatPage() {
                   className={`message-group${m.id === rawMessage?.id ? ' raw-selected' : ''}`}
                 >
                   {m.parts ? (
-                    m.parts.map((p, i) => (
-                      <div key={i} className={`message assistant speaker-${p.speaker}`}>
-                        <div className="message-role">
-                          {SPEAKER_LABEL[p.speaker] ?? p.speaker}
-                          {p.secret && `：${p.secret}`}
-                        </div>
-                        <div className="message-content">{p.text}</div>
-                        {p.simulation_run_id != null && (
-                          <Link to={`/simulation-runs/${p.simulation_run_id}`}>
-                            実行記録 #{p.simulation_run_id} を見る
-                          </Link>
-                        )}
-                      </div>
-                    ))
+                    <MessageParts parts={m.parts} />
                   ) : (
                     <div className={`message ${m.role}`}>
                       <div className="message-role">{ROLE_LABEL[m.role]}</div>
@@ -217,6 +218,15 @@ export default function ChatPage() {
                       onClick={() => setRawMessageId(m.id)}
                     >
                       この発言の RAW を見る
+                    </button>
+                  )}
+                  {m.role === 'assistant' && (
+                    <button
+                      type="button"
+                      className="link"
+                      onClick={() => startParallel(m.id)}
+                    >
+                      ここから並行会話
                     </button>
                   )}
                   {m.role === 'assistant' && (

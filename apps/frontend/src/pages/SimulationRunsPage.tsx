@@ -32,6 +32,7 @@ function CallerView({ run }: { run: SimulationRun }) {
           <NavLink to={`/dialogue/${run.dialogue_id}`}>対話 #{run.dialogue_id}</NavLink>
         </>
       )}
+      {run.parallel_candidate_id !== null && <> 候補 #{run.parallel_candidate_id}</>}
       {run.agent_id && <span className="code">（{run.agent_id}）</span>}
     </span>
   )
