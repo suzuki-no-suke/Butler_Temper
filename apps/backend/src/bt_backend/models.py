@@ -311,7 +311,8 @@ class ParallelConversation(SQLModel, table=True):
     bot_id: int = Field(foreign_key="bot.id", index=True)
     # 元の会話・対話が固定していた Agent のバージョン
     bot_version_id: int = Field(foreign_key="botversion.id")
-    # 写した元: conversation（チャットの会話）/ dialogue（エージェント間対話）。記録のためだけに持つ
+    # 写した元: conversation（チャットの会話）/ dialogue（エージェント間対話）/ new（会話の最初から）。
+    # 記録のためだけに持つ
     source_kind: str
     # 外部キーにはしない（会話 → 候補 → 並行会話 → 会話 の循環を避けるため）
     source_conversation_id: int | None = None

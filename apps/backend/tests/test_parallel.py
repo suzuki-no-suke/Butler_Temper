@@ -256,6 +256,29 @@ def test_candidate_simulation_runs_are_linked(
         assert run["parallel_candidate_id"] == c["id"]
 
 
+def test_parallel_from_the_start(client: TestClient, llm: Callable[[Handler], None]) -> None:
+    sent: list[dict[str, Any]] = []
+    llm(_counting(sent))
+    bot_id = _create_bot(client, system_prompt="執事です")
+    r = client.post("/api/parallel-conversations", json={"bot_id": bot_id})
+    assert r.status_code == 200, r.text
+    parallel = r.json()
+    assert parallel["source_kind"] == "new"
+    assert parallel["message_count"] == 0
+    _round(client, parallel["id"], "はじめまして", 2)
+    detail = client.get(f"/api/parallel-conversations/{parallel['id']}").json()
+    assert detail["messages"] == []
+    assert all(b["messages"] == [{"role": "user", "content": "はじめまして"}] for b in sent)
+    candidate = detail["rounds"][0]["candidates"][0]
+    adopted = client.post(f"/api/parallel-candidates/{candidate['id']}/adopt").json()
+    messages = client.get(f"/api/conversations/{adopted['id']}").json()["messages"]
+    assert [(m["role"], m["content"]) for m in messages] == [
+        ("user", "はじめまして"),
+        ("assistant", candidate["text"]),
+    ]
+    assert client.post("/api/parallel-conversations", json={"bot_id": 999}).status_code == 404
+
+
 def test_parallel_settings(client: TestClient) -> None:
     assert client.get("/api/parallel-settings").json() == {"concurrency": 3}
     r = client.put("/api/parallel-settings", json={"concurrency": 5})

@@ -177,6 +177,20 @@ def start_from_dialogue(
     return _create(session, parallel, copied)
 
 
+def start_new(session: Session, bot: Bot) -> ParallelConversation:
+    """会話の最初から並行会話を始める。Agent の最新のバージョンに固定する。"""
+    if bot.unavailable_reason:
+        raise ConversationClosed(f"この Agent は停止しています: {bot.unavailable_reason}")
+    version = session.exec(
+        select(BotVersion)
+        .where(BotVersion.bot_id == bot.id)
+        .order_by(col(BotVersion.version).desc())
+    ).first()
+    assert bot.id is not None and version is not None and version.id is not None
+    parallel = ParallelConversation(bot_id=bot.id, bot_version_id=version.id, source_kind="new")
+    return _create(session, parallel, [])
+
+
 def create_round(
     session: Session, parallel: ParallelConversation, content: str, count: int
 ) -> ParallelRound:

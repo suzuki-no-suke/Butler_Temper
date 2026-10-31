@@ -10,6 +10,7 @@ from bt_backend.api.schemas import (
     ParallelCandidateOut,
     ParallelConversationDetail,
     ParallelConversationOut,
+    ParallelNew,
     ParallelRoundCreate,
     ParallelRoundOut,
     ParallelStart,
@@ -37,6 +38,7 @@ from bt_backend.parallel import (
     save_parallel_settings,
     start_from_conversation,
     start_from_dialogue,
+    start_new,
 )
 from bt_backend.services import ConversationClosed
 
@@ -92,6 +94,18 @@ def start_from_dialogue_api(
         return _out(session, start_from_dialogue(session, d, body.message_id))
     except InvalidBranch as e:
         raise HTTPException(422, str(e)) from e
+
+
+@router.post("/parallel-conversations")
+def start_new_api(body: ParallelNew, session: SessionDep) -> ParallelConversationOut:
+    """会話の最初から並行会話を始める。"""
+    bot = session.get(Bot, body.bot_id)
+    if bot is None:
+        raise HTTPException(404, "Agent が見つかりません")
+    try:
+        return _out(session, start_new(session, bot))
+    except ConversationClosed as e:
+        raise HTTPException(409, str(e)) from e
 
 
 @router.get("/parallel-conversations")

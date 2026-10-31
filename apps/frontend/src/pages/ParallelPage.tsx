@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import {
   api,
+  type Bot,
   type ParallelCandidate,
   type ParallelConversation,
   type ParallelConversationDetail,
@@ -10,7 +11,11 @@ import MessageParts from '../components/MessageParts'
 import RawPanel, { type RawTarget } from '../components/RawPanel'
 
 const ROLE_LABEL = { user: 'あなた', assistant: 'Agent', error: 'エラー' } as const
-const SOURCE_LABEL = { conversation: 'チャットの会話', dialogue: 'エージェント間対話' } as const
+const SOURCE_HINT = {
+  conversation: 'チャットの会話の、ここまでの発言を写しています。',
+  dialogue: 'エージェント間対話の、ここまでの発言を写しています。',
+  new: '会話の最初から始めた並行会話です。',
+} as const
 const STATUS_LABEL: Record<ParallelCandidate['status'], string> = {
   pending: '待ち',
   running: '生成中',
@@ -29,6 +34,8 @@ export default function ParallelPage() {
   const { parallelId } = useParams()
   const navigate = useNavigate()
   const [list, setList] = useState<ParallelConversation[]>([])
+  const [bots, setBots] = useState<Bot[]>([])
+  const [botId, setBotId] = useState<number | null>(null)
   const [loaded, setLoaded] = useState<ParallelConversationDetail | null>(null)
   const [input, setInput] = useState('')
   const [count, setCount] = useState(DEFAULT_COUNT)
@@ -44,6 +51,10 @@ export default function ParallelPage() {
   }, [])
 
   useEffect(loadList, [loadList])
+
+  useEffect(() => {
+    api.bots().then(setBots, (e: Error) => setError(e.message))
+  }, [])
 
   const reload = useCallback(() => {
     if (!parallelId) return
@@ -75,6 +86,18 @@ export default function ParallelPage() {
       setError((err as Error).message)
     } finally {
       setSending(false)
+    }
+  }
+
+  const startNew = async () => {
+    if (botId === null) return
+    setError(null)
+    try {
+      const p = await api.startParallelNew(botId)
+      loadList()
+      navigate(`/parallel/${p.id}`)
+    } catch (err) {
+      setError((err as Error).message)
     }
   }
 
@@ -121,6 +144,24 @@ export default function ParallelPage() {
   return (
     <div className={`chat-layout${current ? ' with-raw' : ''}`}>
       <aside className="sidebar">
+        <label>
+          Agent
+          <select
+            value={botId ?? ''}
+            onChange={(e) => setBotId(e.target.value === '' ? null : Number(e.target.value))}
+          >
+            <option value="">選択してください</option>
+            {bots.map((b) => (
+              <option key={b.id} value={b.id} disabled={!!b.unavailable_reason}>
+                {b.name}（{b.agent_name}）
+                {b.unavailable_reason ? '（停止中）' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" onClick={startNew} disabled={botId === null}>
+          新しい会話を並行会話
+        </button>
         <h3>並行会話</h3>
         <ul className="conversation-list">
           {list.map((p) => (
@@ -139,7 +180,8 @@ export default function ParallelPage() {
         </ul>
         {list.length === 0 && (
           <p className="hint">
-            チャットやエージェント間対話の Agent の発言から「ここから並行会話」で始めます。
+            上で Agent を選んで最初から始めるか、チャットやエージェント間対話の Agent
+            の発言から「ここから並行会話」で始めます。
           </p>
         )}
       </aside>
@@ -153,9 +195,7 @@ export default function ParallelPage() {
             <h2>
               {current.bot_name}（バージョン {current.bot_version}）の並行会話 #{current.id}
             </h2>
-            <p className="hint">
-              {SOURCE_LABEL[current.source_kind]}の、ここまでの発言を写しています。
-            </p>
+            <p className="hint">{SOURCE_HINT[current.source_kind]}</p>
             <ol className="messages">
               {current.messages.map((m) => (
                 <li

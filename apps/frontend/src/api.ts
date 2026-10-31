@@ -401,8 +401,8 @@ export interface ParallelConversation {
   bot_id: number
   bot_name: string
   bot_version: number
-  // 写した元: conversation（チャットの会話）/ dialogue（エージェント間対話）
-  source_kind: 'conversation' | 'dialogue'
+  // 写した元: conversation（チャットの会話）/ dialogue（エージェント間対話）/ new（会話の最初から）
+  source_kind: 'conversation' | 'dialogue' | 'new'
   created_at: string
   message_count: number
   round_count: number
@@ -472,6 +472,8 @@ export const api = {
     }),
   startParallelFromDialogue: (dialogueId: number, messageId: number) =>
     post<ParallelConversation>(`/api/dialogues/${dialogueId}/parallel`, { message_id: messageId }),
+  startParallelNew: (botId: number) =>
+    post<ParallelConversation>('/api/parallel-conversations', { bot_id: botId }),
   parallelConversations: () => request<ParallelConversation[]>('/api/parallel-conversations'),
   parallelConversation: (id: number) =>
     request<ParallelConversationDetail>(`/api/parallel-conversations/${id}`),

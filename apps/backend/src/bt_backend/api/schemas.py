@@ -351,6 +351,10 @@ class SimulationSettingsOut(BaseModel):
     descriptions: dict[str, str]
 
 
+class ParallelNew(BaseModel):
+    bot_id: int
+
+
 class ParallelStart(BaseModel):
     # 分かれる位置（この Agent の発言まで写す）
     message_id: int
