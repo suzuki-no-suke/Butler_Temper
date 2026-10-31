@@ -6,6 +6,9 @@
 
 表示用の内訳には、メインの発言と、シミュレータの呼び出しと結果だけを出す。
 シミュレーションの中身（LLM シミュレータの各回の出力など）は、シミュレータの実行記録に残る。
+
+前のターンでシミュレータを呼んだ発言は、内訳から tool_use と tool_result のやり取りに戻して送る。
+発言の文だけを送ると、LLM は結果を自分で決めたのか、シミュレータが返したのかを区別できないため。
 """
 
 import json
@@ -14,8 +17,9 @@ from typing import Any
 from pydantic import Field
 
 from bt_backend.agents.base import Agent, AgentSettings, TurnContext, TurnResult
-from bt_backend.agents.context import split_by_chars, to_messages
+from bt_backend.agents.context import split_by_chars
 from bt_backend.agents.llm import anthropic_text
+from bt_backend.agents.types import ChatTurn
 
 DEFAULT_SYSTEM_PROMPT = """\
 あなたは丁寧な執事です。主人（利用者）と日本語で会話してください。
@@ -54,6 +58,65 @@ def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+_RECORD_LABEL = "［シミュレータの実行記録（このとき実際にシミュレータが返した結果）］"
+
+
+def _blocks(content: str | list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{"type": "text", "text": content}] if isinstance(content, str) else content
+
+
+def _add(messages: list[dict[str, Any]], role: str, content: str | list[dict[str, Any]]) -> None:
+    # 同じ役の発言が続くときは一つにまとめる（API は役の交互を求める）
+    if messages and messages[-1]["role"] == role:
+        messages[-1]["content"] = [*_blocks(messages[-1]["content"]), *_blocks(content)]
+    else:
+        messages.append({"role": role, "content": content})
+
+
+def _history_messages(turns: list[ChatTurn], tool_names: set[str]) -> list[dict[str, Any]]:
+    """会話履歴を messages にする。シミュレータを呼んだ発言は、ツールのやり取りに戻す。
+
+    今見せていないシミュレータの呼び出しと、呼び出しの中身を持たない内訳（修正前に保存したもの）は、
+    シミュレータの実行記録であることを明記した文として入れる。
+    """
+    messages: list[dict[str, Any]] = []
+    for turn in turns:
+        parts = turn.parts or []
+        if turn.role != "assistant" or not any(p.get("speaker") == "simulation" for p in parts):
+            _add(messages, turn.role, turn.content)
+            continue
+        blocks: list[dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
+        for i, part in enumerate(parts):
+            if part.get("speaker") == "simulation" and part.get("tool") in tool_names:
+                use_id = f"history_{turn.seq}_{i}"
+                blocks.append(
+                    {"type": "tool_use", "id": use_id, "name": part["tool"], "input": part["args"]}
+                )
+                results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": use_id,
+                        "content": _json(part["result"]),
+                        "is_error": not part["ok"],
+                    }
+                )
+                continue
+            if results:
+                _add(messages, "assistant", blocks)
+                _add(messages, "user", results)
+                blocks, results = [], []
+            text = part["text"]
+            if part.get("speaker") == "simulation":
+                text = f"{_RECORD_LABEL}\n{text}"
+            blocks.append({"type": "text", "text": text})
+        if blocks:
+            _add(messages, "assistant", blocks)
+        if results:
+            _add(messages, "user", results)
+    return messages
+
+
 class SimulatorChatAgent(Agent[SimulatorChatSettings]):
     settings_model = SimulatorChatSettings
 
@@ -65,17 +128,20 @@ class SimulatorChatAgent(Agent[SimulatorChatSettings]):
             f"{label}（{model}）が、システムプロンプトに書いた条件で、自分でシミュレータを呼ぶ。"
             "simulators に挙げたシミュレータをツールとして見せ、"
             "呼び出しと結果を表示用の内訳に出す。"
-            "直近 context_chars 文字分の会話を毎回送る（ツールのやり取りは次のターンに送らない）。"
+            "直近 context_chars 文字分の会話を毎回送る。"
+            "前のターンのシミュレータの呼び出しと結果も、ツールのやり取りとして送る。"
         )
 
     def run(self, settings: SimulatorChatSettings, ctx: TurnContext) -> TurnResult:
         _, recent = split_by_chars(ctx.history, settings.context_chars)
-        messages: list[dict[str, Any]] = list(to_messages(recent))
         tools = [
             {"name": t.name, "description": t.description, "input_schema": t.input_schema}
             for t in ctx.simulators.tools
             if t.name in settings.simulators
         ]
+        messages = _history_messages(
+            recent, {t.name for t in ctx.simulators.tools if t.name in settings.simulators}
+        )
         texts: list[str] = []
         parts: list[dict[str, Any]] = []
         simulated = False
@@ -109,6 +175,11 @@ class SimulatorChatAgent(Agent[SimulatorChatSettings]):
                         "speaker": "simulation",
                         "text": f"呼び出し: {use.name} {_json(args)}\n結果: {_json(call.result)}",
                         "simulation_run_id": call.run_id,
+                        # 次のターン以降に、ツールのやり取りとして送り直すための呼び出しの中身
+                        "tool": use.name,
+                        "args": args,
+                        "result": call.result,
+                        "ok": call.ok,
                     }
                 )
                 results.append(

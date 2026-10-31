@@ -8,6 +8,8 @@ class ChatTurn:
     seq: int
     role: Literal["user", "assistant"]
     content: str
+    # 保存されている表示用の内訳（この発言をした Agent 自身の発言のときだけ入れる）
+    parts: list[dict[str, Any]] | None = None
 
 
 @dataclass(frozen=True)

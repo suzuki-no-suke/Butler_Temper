@@ -116,7 +116,12 @@ def send_message(
     session.commit()
 
     turns = [
-        ChatTurn(seq=m.seq, role="user" if m.role == "user" else "assistant", content=m.content)
+        ChatTurn(
+            seq=m.seq,
+            role="user" if m.role == "user" else "assistant",
+            content=m.content,
+            parts=m.parts if m.role == "assistant" else None,
+        )
         for m in history
         if m.role in ("user", "assistant")
     ] + [ChatTurn(seq=seq, role="user", content=content)]

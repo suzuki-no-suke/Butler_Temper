@@ -176,6 +176,70 @@ def test_agent_calls_simulator_with_tool_use(
     assert run["agent_id"] == "simulator-chat-sonnet"
 
 
+def test_previous_simulation_is_sent_as_tool_exchange(
+    client: TestClient, llm: Callable[[Handler], None]
+) -> None:
+    sent: list[dict[str, Any]] = []
+
+    def handler(req: httpx2.Request) -> httpx2.Response:
+        body = json.loads(req.content)
+        sent.append(body)
+        if len(sent) == 1:
+            return json_response(200, _tool_use("dice", {"m": 6}))
+        return json_response(200, anthropic_message("出目でございます", body["model"]))
+
+    llm(handler)
+    agents = client.get("/api/agents").json()
+    agent = next(a for a in agents if a["id"] == "simulator-chat-sonnet")
+    bot = client.post(
+        "/api/bots",
+        json={"name": "執事", "agent_id": agent["id"], "settings": agent["default_settings"]},
+    ).json()
+    conv = client.post("/api/conversations", json={"bot_id": bot["id"]}).json()
+    first = client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "振る"})
+    result = first.json()[1]["parts"][0]["result"]
+    r = client.post(f"/api/conversations/{conv['id']}/messages", json={"content": "さっきの目は？"})
+    assert r.status_code == 200, r.text
+
+    [user, use, back, reply, now] = sent[2]["messages"]
+    assert user == {"role": "user", "content": "振る"}
+    assert use["role"] == "assistant"
+    [tool_use] = use["content"]
+    assert tool_use["type"] == "tool_use"
+    assert tool_use["name"] == "dice"
+    assert tool_use["input"] == {"m": 6}
+    assert back["role"] == "user"
+    [tool_result] = back["content"]
+    assert tool_result["tool_use_id"] == tool_use["id"]
+    assert json.loads(tool_result["content"]) == result
+    assert reply == {"role": "assistant", "content": [{"type": "text", "text": "出目でございます"}]}
+    assert now == {"role": "user", "content": "さっきの目は？"}
+
+
+def test_history_marks_simulation_without_call_details() -> None:
+    from bt_backend.agents.simulator_chat import _history_messages
+    from bt_backend.agents.types import ChatTurn
+
+    parts = [
+        {"speaker": "main", "text": "引いていかない？"},
+        {"speaker": "simulation", "text": "呼び出し: omikuji {}\n結果: {}"},
+        {"speaker": "main", "text": "大吉でございます"},
+    ]
+    messages = _history_messages(
+        [
+            ChatTurn(seq=0, role="user", content="引く"),
+            ChatTurn(seq=1, role="assistant", content="", parts=parts),
+            ChatTurn(seq=2, role="user", content="ありがとう"),
+        ],
+        {"omikuji"},
+    )
+    [_, reply, _] = messages
+    texts = [b["text"] for b in reply["content"]]
+    assert texts[0] == "引いていかない？"
+    assert texts[1].startswith("［シミュレータの実行記録")
+    assert texts[2] == "大吉でございます"
+
+
 def test_agent_without_tool_use_has_no_parts(
     client: TestClient, llm: Callable[[Handler], None]
 ) -> None:

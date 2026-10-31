@@ -58,7 +58,12 @@ def dialogue_templates(session: Session, dialogue: Dialogue) -> dict[str, str]:
 def _turns(speeches: list[DialogueMessage], me: str) -> list[ChatTurn]:
     """発言者 me から見た会話。自分の発言が assistant、相手の発言が user になる。"""
     return [
-        ChatTurn(seq=m.seq, role="assistant" if m.speaker == me else "user", content=m.content)
+        ChatTurn(
+            seq=m.seq,
+            role="assistant" if m.speaker == me else "user",
+            content=m.content,
+            parts=m.parts if m.speaker == me else None,
+        )
         for m in speeches
     ]
 
