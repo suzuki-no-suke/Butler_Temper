@@ -3,6 +3,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from sqlmodel import Session, col, select
 
+from bt_backend.agent_templates import MissingAgentTemplate
 from bt_backend.api.conversations import PREVIEW_CHARS, _conversation_out
 from bt_backend.api.schemas import (
     ConversationOut,
@@ -104,7 +105,7 @@ def start_new_api(body: ParallelNew, session: SessionDep) -> ParallelConversatio
         raise HTTPException(404, "Agent が見つかりません")
     try:
         return _out(session, start_new(session, bot))
-    except ConversationClosed as e:
+    except (ConversationClosed, MissingAgentTemplate) as e:
         raise HTTPException(409, str(e)) from e
 
 

@@ -232,7 +232,7 @@ export default function DialoguePage() {
               {current.bot_name}（v{current.bot_version}）の対話 #{current.id}
             </h2>
             <p className="hint">
-              テンプレート:{' '}
+              対話用テンプレート:{' '}
               {current.templates.length === 0
                 ? 'なし'
                 : current.templates.map((t) => `${t.name}（v${t.version}）`).join('、')}
@@ -293,7 +293,7 @@ export default function DialoguePage() {
                   引き継いで続ける
                 </button>
                 <p className="hint">
-                  エラーより前のやり取りを引き継いだ新しい対話を、同じバージョン（テンプレートを含む）で始めます。
+                  エラーより前のやり取りを引き継いだ新しい対話を、同じバージョン（対話用テンプレート・Agent テンプレートを含む）で始めます。
                 </p>
               </div>
             ) : (

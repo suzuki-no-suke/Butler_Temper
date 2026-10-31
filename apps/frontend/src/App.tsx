@@ -12,6 +12,7 @@ import ParallelSettingsPage from './pages/ParallelSettingsPage'
 import SimulationRunsPage from './pages/SimulationRunsPage'
 import SimulatorsPage from './pages/SimulatorsPage'
 import TemplatesPage from './pages/TemplatesPage'
+import { AGENT_TEMPLATE_KIND, DIALOGUE_TEMPLATE_KIND } from './templateKinds'
 
 export default function App() {
   return (
@@ -22,11 +23,12 @@ export default function App() {
           <NavLink to="/chat">チャット</NavLink>
           <NavLink to="/history">履歴</NavLink>
           <NavLink to="/bots">Agent 設定</NavLink>
+          <NavLink to="/agent-templates">Agent テンプレート</NavLink>
           <span className="nav-separator" />
           <NavLink to="/dialogue">エージェント間対話</NavLink>
           <NavLink to="/dialogue-history">対話履歴</NavLink>
           <NavLink to="/conversation-bots">会話用エージェント設定</NavLink>
-          <NavLink to="/templates">テンプレート</NavLink>
+          <NavLink to="/templates">対話用テンプレート</NavLink>
           <span className="nav-separator" />
           <NavLink to="/simulators">シミュレータ</NavLink>
           <NavLink to="/simulation-runs">シミュレーション履歴</NavLink>
@@ -64,8 +66,19 @@ export default function App() {
             <Route path="new" element={<BotNewPage />} />
             <Route path=":botId" element={<BotDetailPage />} />
           </Route>
-          <Route path="/templates" element={<TemplatesPage />} />
-          <Route path="/templates/:templateId" element={<TemplatesPage />} />
+          <Route path="/templates" element={<TemplatesPage key="dialogue" kind={DIALOGUE_TEMPLATE_KIND} />} />
+          <Route
+            path="/templates/:templateId"
+            element={<TemplatesPage key="dialogue" kind={DIALOGUE_TEMPLATE_KIND} />}
+          />
+          <Route
+            path="/agent-templates"
+            element={<TemplatesPage key="agent" kind={AGENT_TEMPLATE_KIND} />}
+          />
+          <Route
+            path="/agent-templates/:templateId"
+            element={<TemplatesPage key="agent" kind={AGENT_TEMPLATE_KIND} />}
+          />
           <Route path="/simulators" element={<SimulatorsPage />} />
           <Route path="/simulators/:simulatorName" element={<SimulatorsPage />} />
           <Route path="/simulation-runs" element={<SimulationRunsPage />} />

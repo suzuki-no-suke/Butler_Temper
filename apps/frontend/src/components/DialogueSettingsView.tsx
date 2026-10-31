@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { api, type DialogueSettings } from '../api'
 import { formatSettings } from '../settingsJson'
+import AgentTemplatesUsed from './AgentTemplatesUsed'
 
-// エージェント間対話が使っている両者の設定とテンプレートを、開いたときに読み込んで表示する
+// エージェント間対話が使っている両者の設定と、対話用テンプレート・Agent テンプレートを、開いたときに読み込んで表示する
 export default function DialogueSettingsView({ dialogueId }: { dialogueId: number }) {
   const [settings, setSettings] = useState<DialogueSettings | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,11 +37,12 @@ export default function DialogueSettingsView({ dialogueId }: { dialogueId: numbe
               {s.note && ` — ${s.note}`} / {new Date(s.created_at).toLocaleString('ja-JP')} 保存
             </p>
             <pre className="code">{formatSettings(s.settings)}</pre>
+            {label === 'Agent' && <AgentTemplatesUsed settings={s} />}
           </div>
         ))}
       {settings && (
         <>
-          <h4>テンプレート</h4>
+          <h4>対話用テンプレート</h4>
           {settings.templates.length === 0 && <p className="hint">使っていません</p>}
           {settings.templates.map((t) => (
             <div key={t.name}>

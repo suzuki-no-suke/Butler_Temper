@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, col, select
 
+from bt_backend.agent_templates import resolve_agent_settings, run_settings
 from bt_backend.agents import ChatTurn, run_turn
 from bt_backend.continuations import continuation_access, save_continuations
 from bt_backend.db import get_engine, get_raw_engine
@@ -139,6 +140,8 @@ def start_from_conversation(
         bot_version_id=conversation.bot_version_id,
         source_kind="conversation",
         source_conversation_id=conversation.id,
+        agent_template_version_ids=conversation.agent_template_version_ids,
+        resolved_settings=conversation.resolved_settings,
         agent_state=target.agent_state,
     )
     return _create(session, parallel, copied)
@@ -172,13 +175,18 @@ def start_from_dialogue(
         bot_version_id=dialogue.bot_version_id,
         source_kind="dialogue",
         source_dialogue_id=dialogue.id,
+        agent_template_version_ids=dialogue.agent_template_version_ids,
+        resolved_settings=dialogue.agent_resolved_settings,
         agent_state=target.agent_state,
     )
     return _create(session, parallel, copied)
 
 
 def start_new(session: Session, bot: Bot) -> ParallelConversation:
-    """会話の最初から並行会話を始める。Agent の最新のバージョンに固定する。"""
+    """会話の最初から並行会話を始める。Agent の最新のバージョンと Agent テンプレートに固定する。
+
+    Agent テンプレートが見つからなければ MissingAgentTemplate。
+    """
     if bot.unavailable_reason:
         raise ConversationClosed(f"この Agent は停止しています: {bot.unavailable_reason}")
     version = session.exec(
@@ -187,7 +195,14 @@ def start_new(session: Session, bot: Bot) -> ParallelConversation:
         .order_by(col(BotVersion.version).desc())
     ).first()
     assert bot.id is not None and version is not None and version.id is not None
-    parallel = ParallelConversation(bot_id=bot.id, bot_version_id=version.id, source_kind="new")
+    resolved = resolve_agent_settings(session, version.settings)
+    parallel = ParallelConversation(
+        bot_id=bot.id,
+        bot_version_id=version.id,
+        source_kind="new",
+        agent_template_version_ids=resolved.version_ids,
+        resolved_settings=resolved.settings,
+    )
     return _create(session, parallel, [])
 
 
@@ -254,7 +269,7 @@ def _run_candidate(candidate_id: int | None) -> None:
         caller = Caller(kind="parallel", agent_id=bot.agent_id, parallel_candidate_id=candidate_id)
         outcome = run_turn(
             bot.agent_id,
-            version.settings,
+            run_settings(parallel.resolved_settings, version.settings),
             turns,
             dict(parallel.agent_state or {}),
             api_keys(),
@@ -301,6 +316,8 @@ def adopt(session: Session, candidate: ParallelCandidate) -> Conversation:
         bot_id=parallel.bot_id,
         bot_version_id=parallel.bot_version_id,
         parallel_candidate_id=candidate.id,
+        agent_template_version_ids=parallel.agent_template_version_ids,
+        resolved_settings=parallel.resolved_settings,
         agent_state=candidate.agent_state,
     )
     session.add(conversation)

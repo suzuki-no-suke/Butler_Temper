@@ -1,31 +1,33 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, useNavigate, useParams } from 'react-router'
-import { api, type Template, type TemplateDetail } from '../api'
+import type { Template, TemplateDetail } from '../api'
+import type { TemplateKind } from '../templateKinds'
 
-// テンプレート（台本など、プロンプトに埋め込む文章）。名前は変えられず、保存するたびに新しいバージョンになる
-export default function TemplatesPage() {
+// テンプレート（プロンプトに埋め込む文章）。対話用テンプレートと Agent テンプレートを kind で分ける。
+// 名前は変えられず、保存するたびに新しいバージョンになる
+export default function TemplatesPage({ kind }: { kind: TemplateKind }) {
   const { templateId } = useParams()
   const [templates, setTemplates] = useState<Template[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const reload = useCallback(() => {
-    api.templates().then(setTemplates, (e: Error) => setError(e.message))
-  }, [])
+    kind.list().then(setTemplates, (e: Error) => setError(e.message))
+  }, [kind])
 
   useEffect(reload, [reload])
 
   return (
     <div className="bots-layout">
       <aside className="sidebar">
-        <NavLink to="/templates" end className="button">
-          新しいテンプレートを作る
+        <NavLink to={kind.basePath} end className="button">
+          新しい{kind.label}を作る
         </NavLink>
-        <h3>テンプレート</h3>
+        <h3>{kind.label}</h3>
         {error && <p className="error">{error}</p>}
         <ul className="bot-list">
           {templates.map((t) => (
             <li key={t.id}>
-              <NavLink to={`/templates/${t.id}`}>
+              <NavLink to={`${kind.basePath}/${t.id}`}>
                 {t.name}
                 <small>v{t.latest_version}</small>
               </NavLink>
@@ -35,6 +37,7 @@ export default function TemplatesPage() {
         </ul>
       </aside>
       <TemplateEditor
+        kind={kind}
         key={templateId ?? 'new'}
         templateId={templateId === undefined ? null : Number(templateId)}
         onSaved={reload}
@@ -44,7 +47,15 @@ export default function TemplatesPage() {
 }
 
 // テンプレートを開くたびに作り直す（key で切り替える）
-function TemplateEditor({ templateId, onSaved }: { templateId: number | null; onSaved: () => void }) {
+function TemplateEditor({
+  kind,
+  templateId,
+  onSaved,
+}: {
+  kind: TemplateKind
+  templateId: number | null
+  onSaved: () => void
+}) {
   const navigate = useNavigate()
   const [detail, setDetail] = useState<TemplateDetail | null>(null)
   const [name, setName] = useState('')
@@ -58,28 +69,28 @@ function TemplateEditor({ templateId, onSaved }: { templateId: number | null; on
 
   useEffect(() => {
     if (templateId === null) return
-    api.template(templateId).then(
+    kind.get(templateId).then(
       (t) => {
         setDetail(t)
         setContent(t.versions.at(-1)?.content ?? '')
       },
       (e: Error) => setError(e.message),
     )
-  }, [templateId])
+  }, [kind, templateId])
 
   const save = async () => {
     setError(null)
     setMessage(null)
     try {
       if (creating) {
-        const t = await api.createTemplate({ name: name.trim(), content, note })
+        const t = await kind.create({ name: name.trim(), content, note })
         onSaved()
-        navigate(`/templates/${t.id}`)
+        navigate(`${kind.basePath}/${t.id}`)
         return
       }
       if (!detail) return
-      const v = await api.createTemplateVersion(detail.id, { content, note })
-      setDetail(await api.template(detail.id))
+      const v = await kind.createVersion(detail.id, { content, note })
+      setDetail(await kind.get(detail.id))
       onSaved()
       setNote('')
       setMessage(`バージョン ${v.version} として保存しました`)
@@ -94,14 +105,13 @@ function TemplateEditor({ templateId, onSaved }: { templateId: number | null; on
   return (
     <section className="page">
         {creating ? (
-          <h2>新しいテンプレートを作る</h2>
+          <h2>新しい{kind.label}を作る</h2>
         ) : (
           <h2>{detail?.name ?? '読み込み中…'}</h2>
         )}
         <p className="hint">
-          会話用エージェントの設定の中に <code>{`{{template:${placeholder}}}`}</code>{' '}
-          と書くと、エージェント間対話を始めたときの最新バージョンの本文が埋め込まれます（入れ子にはしません）。
-          保存するときに、改行とタブ以外の制御文字を取り除きます。
+          <code>{kind.placeholder(placeholder)}</code> の形で使います。{kind.usage}
+          入れ子にはしません。保存するときに、改行とタブ以外の制御文字を取り除きます。
         </p>
         <div className="bot-columns">
           <section>

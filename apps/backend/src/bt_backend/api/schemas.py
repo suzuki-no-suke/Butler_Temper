@@ -92,6 +92,13 @@ class ConversationCommentOut(BaseModel):
     created_at: datetime
 
 
+class AgentTemplateUsedOut(BaseModel):
+    name: str
+    template_id: int
+    version: int
+    content: str
+
+
 class ConversationSettingsOut(BaseModel):
     bot_id: int
     bot_name: str
@@ -101,6 +108,10 @@ class ConversationSettingsOut(BaseModel):
     note: str
     created_at: datetime
     settings: dict[str, Any]
+    # 開始時に固定した Agent テンプレートと、それを埋め込んだ設定（実際に使う設定）。
+    # Agent テンプレートの仕組みより前の記録では、空と None
+    agent_templates: list[AgentTemplateUsedOut] = []
+    resolved_settings: dict[str, Any] | None = None
 
 
 class SettingsChatIn(BaseModel):

@@ -48,6 +48,11 @@ class Conversation(SQLModel, table=True):
     resumed_from_id: int | None = Field(default=None, foreign_key="conversation.id")
     # 並行会話の候補を採用して作った場合の、その候補
     parallel_candidate_id: int | None = Field(default=None, foreign_key="parallelcandidate.id")
+    # 開始時に固定した Agent テンプレート（名前 -> AgentTemplateVersion.id）と、
+    # その本文を埋め込んだ Agent 設定。None なら Agent テンプレートの仕組みより前の記録で、
+    # Agent のバージョンの設定をそのまま使う
+    agent_template_version_ids: dict[str, int] | None = Field(default=None, sa_column=Column(JSON))
+    resolved_settings: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     # Agent の状態（メモリなど）。Agent が自分で保存する
     agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)
@@ -156,11 +161,39 @@ class ConversationBotSettingsChatMessage(SQLModel, table=True):
 
 
 class Template(SQLModel, table=True):
-    """プロンプトに埋め込む文章（台本など）。中身はバージョンとして持つ。"""
+    """対話用テンプレート。会話用エージェントのプロンプトに埋め込む文章（台本など）。
+
+    中身はバージョンとして持つ。画面・資料では「対話用テンプレート」と呼ぶが、
+    表・コード・API の名前は template のまま（技術的負債として残している）。
+    """
 
     id: int | None = Field(default=None, primary_key=True)
     # プロンプトでは {{template:名前}} で参照する
     name: str = Field(unique=True)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class AgentTemplate(SQLModel, table=True):
+    """Agent 設定に埋め込む文章。対話用テンプレート（Template）とは別に持ち、混ぜない。
+
+    会話などを始めたときに最新のバージョンの本文を Agent 設定に埋め込み、固定する。
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    # Agent 設定では {{agent_template:名前}} で参照する
+    name: str = Field(unique=True)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class AgentTemplateVersion(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("template_id", "version"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    template_id: int = Field(foreign_key="agenttemplate.id", index=True)
+    version: int
+    # 保存時にサニタイズした本文
+    content: str
+    note: str = ""
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -191,6 +224,11 @@ class Dialogue(SQLModel, table=True):
     # active / stopped（エラーで停止）
     status: str = "active"
     resumed_from_id: int | None = Field(default=None, foreign_key="dialogue.id")
+    # 開始時に固定した Agent テンプレート（名前 -> AgentTemplateVersion.id）と、
+    # その本文を埋め込んだ Agent の設定。None なら Agent テンプレートの仕組みより前の記録で、
+    # Agent のバージョンの設定をそのまま使う
+    agent_template_version_ids: dict[str, int] | None = Field(default=None, sa_column=Column(JSON))
+    agent_resolved_settings: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     # 会話用エージェントの状態と、Agent の状態。それぞれが自分で保存する
     conversation_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
@@ -317,6 +355,11 @@ class ParallelConversation(SQLModel, table=True):
     # 外部キーにはしない（会話 → 候補 → 並行会話 → 会話 の循環を避けるため）
     source_conversation_id: int | None = None
     source_dialogue_id: int | None = Field(default=None, foreign_key="dialogue.id")
+    # 開始時に固定した Agent テンプレート（名前 -> AgentTemplateVersion.id）と、
+    # その本文を埋め込んだ Agent 設定。None なら Agent テンプレートの仕組みより前の記録で、
+    # Agent のバージョンの設定をそのまま使う
+    agent_template_version_ids: dict[str, int] | None = Field(default=None, sa_column=Column(JSON))
+    resolved_settings: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     # 分かれる位置での Agent の状態
     agent_state: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)

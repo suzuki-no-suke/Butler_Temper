@@ -80,7 +80,7 @@ export default function DialogueHistoryPage() {
             </div>
             <div className="history-preview">{d.preview || '（発言なし）'}</div>
             <div className="history-meta">
-              {d.message_count} 件 / テンプレート{' '}
+              {d.message_count} 件 / 対話用テンプレート{' '}
               {d.templates.length === 0
                 ? 'なし'
                 : d.templates.map((t) => `${t.name}（v${t.version}）`).join('、')}{' '}

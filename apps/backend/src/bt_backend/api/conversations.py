@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, col, select
 
+from bt_backend.agent_templates import MissingAgentTemplate, resolve_agent_settings
 from bt_backend.agents import UnknownAgent, get_agent_info
+from bt_backend.api.agent_templates import used_agent_templates
 from bt_backend.api.schemas import (
     ConversationCommentOut,
     ConversationCreate,
@@ -101,7 +103,17 @@ def create_conversation(body: ConversationCreate, session: SessionDep) -> Conver
         .order_by(col(BotVersion.version).desc())
     ).first()
     assert version is not None and version.id is not None
-    c = Conversation(bot_id=body.bot_id, bot_version_id=version.id)
+    # Agent テンプレートを、開始時点の最新バージョンで埋め込んで固定する
+    try:
+        resolved = resolve_agent_settings(session, version.settings)
+    except MissingAgentTemplate as e:
+        raise HTTPException(409, str(e)) from e
+    c = Conversation(
+        bot_id=body.bot_id,
+        bot_version_id=version.id,
+        agent_template_version_ids=resolved.version_ids,
+        resolved_settings=resolved.settings,
+    )
     session.add(c)
     session.commit()
     session.refresh(c)
@@ -165,6 +177,8 @@ def get_conversation_settings(conversation_id: int, session: SessionDep) -> Conv
         note=version.note,
         created_at=version.created_at,
         settings=version.settings,
+        agent_templates=used_agent_templates(session, c.agent_template_version_ids),
+        resolved_settings=c.resolved_settings,
     )
 
 

@@ -8,6 +8,7 @@ import unicodedata
 
 from sqlmodel import Session, col, select
 
+from bt_backend.agent_templates import run_settings
 from bt_backend.agents import ChatTurn, TurnOutcome, run_conversation_turn, run_turn
 from bt_backend.continuations import continuation_access, save_continuations
 from bt_backend.models import (
@@ -173,7 +174,7 @@ def advance_dialogue(
         # Agent が、会話用エージェントの発言を利用者の発言として受けて応答する
         outcome = run_turn(
             bot.agent_id,
-            version.settings,
+            run_settings(dialogue.agent_resolved_settings, version.settings),
             _turns([*speeches, speech], "agent"),
             dict(dialogue.agent_state or {}),
             api_keys(),
@@ -241,6 +242,8 @@ def resume_dialogue(session: Session, dialogue: Dialogue) -> Dialogue:
         bot_id=dialogue.bot_id,
         bot_version_id=dialogue.bot_version_id,
         template_version_ids=dict(dialogue.template_version_ids),
+        agent_template_version_ids=dialogue.agent_template_version_ids,
+        agent_resolved_settings=dialogue.agent_resolved_settings,
         resumed_from_id=dialogue.id,
         conversation_state=last_state("conversation"),
         agent_state=last_state("agent"),

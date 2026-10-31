@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from bt_backend.api import (
+    agent_templates,
     bots,
     comments,
     conversation_bots,
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_chat.router)
     app.include_router(conversation_bots.router)
     app.include_router(templates.router)
+    app.include_router(agent_templates.router)
     app.include_router(dialogues.router)
     app.include_router(simulations.router)
     app.include_router(parallel.router)

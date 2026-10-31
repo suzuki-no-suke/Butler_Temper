@@ -55,6 +55,13 @@ export interface ConversationComment {
   created_at: string
 }
 
+export interface AgentTemplateUsed {
+  name: string
+  template_id: number
+  version: number
+  content: string
+}
+
 export interface ConversationSettings {
   bot_id: number
   bot_name: string
@@ -64,6 +71,9 @@ export interface ConversationSettings {
   note: string
   created_at: string
   settings: Settings
+  // 開始時に固定した Agent テンプレートと、それを埋め込んだ設定。仕組みより前の記録では空と null
+  agent_templates: AgentTemplateUsed[]
+  resolved_settings: Settings | null
 }
 
 export interface SettingsChatMessage {
@@ -437,6 +447,12 @@ export const api = {
     post<TemplateDetail>('/api/templates', body),
   createTemplateVersion: (templateId: number, body: { content: string; note: string }) =>
     post<TemplateVersion>(`/api/templates/${templateId}/versions`, body),
+  agentTemplates: () => request<Template[]>('/api/agent-templates'),
+  agentTemplate: (id: number) => request<TemplateDetail>(`/api/agent-templates/${id}`),
+  createAgentTemplate: (body: { name: string; content: string; note: string }) =>
+    post<TemplateDetail>('/api/agent-templates', body),
+  createAgentTemplateVersion: (templateId: number, body: { content: string; note: string }) =>
+    post<TemplateVersion>(`/api/agent-templates/${templateId}/versions`, body),
   dialogues: (filter: { conversationBotId?: number; botId?: number } = {}) => {
     const params = new URLSearchParams()
     if (filter.conversationBotId) params.set('conversation_bot_id', String(filter.conversationBotId))

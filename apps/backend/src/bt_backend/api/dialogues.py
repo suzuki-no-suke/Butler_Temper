@@ -3,8 +3,10 @@
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, col, select
 
+from bt_backend.agent_templates import MissingAgentTemplate, resolve_agent_settings
 from bt_backend.agents import UnknownAgent, get_agent_info, referenced_templates
 from bt_backend.api import conversation_bots
+from bt_backend.api.agent_templates import used_agent_templates
 from bt_backend.api.schemas import (
     ConversationCommentIn,
     ConversationCommentOut,
@@ -148,8 +150,14 @@ def create_dialogue(body: DialogueCreate, session: SessionDep) -> DialogueOut:
         template_version_ids[name] = latest.id
     if missing:
         raise HTTPException(
-            409, f"会話用エージェントの設定にあるテンプレートが見つかりません: {', '.join(missing)}"
+            409,
+            "会話用エージェントの設定にある対話用テンプレートが見つかりません: "
+            + ", ".join(missing),
         )
+    try:
+        resolved = resolve_agent_settings(session, version.settings)
+    except MissingAgentTemplate as e:
+        raise HTTPException(409, str(e)) from e
 
     d = Dialogue(
         conversation_bot_id=body.conversation_bot_id,
@@ -157,6 +165,8 @@ def create_dialogue(body: DialogueCreate, session: SessionDep) -> DialogueOut:
         bot_id=body.bot_id,
         bot_version_id=version.id,
         template_version_ids=template_version_ids,
+        agent_template_version_ids=resolved.version_ids,
+        agent_resolved_settings=resolved.settings,
     )
     session.add(d)
     session.commit()
@@ -224,6 +234,8 @@ def get_dialogue_settings(dialogue_id: int, session: SessionDep) -> DialogueSett
             note=version.note,
             created_at=version.created_at,
             settings=version.settings,
+            agent_templates=used_agent_templates(session, d.agent_template_version_ids),
+            resolved_settings=d.agent_resolved_settings,
         ),
         templates=_templates(session, d),
     )

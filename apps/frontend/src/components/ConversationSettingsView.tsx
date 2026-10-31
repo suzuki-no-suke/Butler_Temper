@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, type ConversationSettings } from '../api'
 import { formatSettings } from '../settingsJson'
+import AgentTemplatesUsed from './AgentTemplatesUsed'
 
 // 会話が使っている Agent 設定を、開いたときに読み込んで表示する
 export default function ConversationSettingsView({ conversationId }: { conversationId: number }) {
@@ -28,6 +29,7 @@ export default function ConversationSettingsView({ conversationId }: { conversat
             {new Date(settings.created_at).toLocaleString('ja-JP')} 保存
           </p>
           <pre className="code">{formatSettings(settings.settings)}</pre>
+          <AgentTemplatesUsed settings={settings} />
         </>
       )}
     </details>

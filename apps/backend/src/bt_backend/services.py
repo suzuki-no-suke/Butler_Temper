@@ -2,6 +2,7 @@
 
 from sqlmodel import Session, col, select
 
+from bt_backend.agent_templates import run_settings
 from bt_backend.agents import ChatTurn, Interrupt, run_turn
 from bt_backend.config import get_settings
 from bt_backend.continuations import continuation_access, save_continuations
@@ -64,6 +65,8 @@ def resume_conversation(session: Session, conversation: Conversation) -> Convers
         bot_id=conversation.bot_id,
         bot_version_id=conversation.bot_version_id,
         resumed_from_id=conversation.id,
+        agent_template_version_ids=conversation.agent_template_version_ids,
+        resolved_settings=conversation.resolved_settings,
         agent_state=next((m.agent_state for m in reversed(kept) if m.agent_state), None),
     )
     session.add(resumed)
@@ -137,7 +140,7 @@ def send_message(
     caller = Caller(kind="conversation", agent_id=bot.agent_id, conversation_id=conversation.id)
     outcome = run_turn(
         bot.agent_id,
-        version.settings,
+        run_settings(conversation.resolved_settings, version.settings),
         turns,
         dict(conversation.agent_state or {}),
         api_keys(),

@@ -16,7 +16,8 @@ AgentCore 一覧
 - 紙だのみ（kamidanomi-wanda） : おみくじ処「紙だのみ」の店主ワンダが、丁稚とシステムに支えられて、おみくじ・レシートを印刷する。つづきの合言葉で、会話をまたいで対話回数と開示済みの秘密を引き継ぐ
 - 会話をまたいで引き継ぐ記録は、ContinuationAccess で読み、TurnResult.continuations で書く（`# 会話をまたぐ記録`）
 - 会話用エージェントの AgentCore は、Agent の AgentCore とは別に登録する（`# 会話用エージェントの AgentCore`）
-  - 台本に沿って会話を続ける（conversation-script-sonnet / -opus） : テンプレート（台本）に沿って、相手の Agent との会話をできるだけ続ける
+  - 台本に沿って会話を続ける（conversation-script-sonnet / -opus） : 対話用テンプレート（台本）に沿って、相手の Agent との会話をできるだけ続ける
+- Agent 設定の文字列には Agent テンプレート（`{{agent_template:名前}}`）を書ける。会話などを始めたときに埋め込んだ設定が AgentCore に渡るので、AgentCore の側で扱う必要は無い（docs/specs/アプリケーション仕様.md の `# Agent テンプレート`）
 - 各 AgentCore が受け付ける Agent 設定の項目と既定値は、コード（apps/backend/src/bt_backend/agents）が原本。Agent 設定画面で確認できる
 - モデル ID は日付の付かない ID を使う。4.6 世代以降は日付の無い ID 自体が固定のスナップショットで、日付付きの ID は無い（docs/knowhows/AnthropicのモデルID.md）
 
@@ -250,7 +251,7 @@ AgentCore が会話を越えて情報を引き継ぐための記録。Bot（同�
 - speak が返すのは、発言の文（SpeakResult.text）と状態だけ。表示用の内訳・割込みは出せない
   - 発言が空ならエラーとして扱う
 - 会話用エージェントから見た会話では、自分の発言が assistant、相手の Agent の発言が user になる
-- テンプレートは SpeakContext.templates（名前 -> 本文）で渡る。`{{template:名前}}` を expand_templates で置き換える。置き換えは一度だけで、入れ子にしない
+- 対話用テンプレートは SpeakContext.templates（名前 -> 本文）で渡る。`{{template:名前}}` を expand_templates で置き換える。置き換えは一度だけで、入れ子にしない
 - シミュレータは SpeakContext.simulators で呼べる。現状、呼ぶ会話用エージェントは無い（2026-10-30）
 
 (決定経緯 : 2026-10-30, docs/decisions/2026-10-30-会話用エージェント.md)
@@ -258,14 +259,14 @@ AgentCore が会話を越えて情報を引き継ぐための記録。Bot（同�
 
 # 台本に沿って会話を続ける（conversation-script-*）
 
-利用者役になり、システムプロンプトに埋め込んだ台本（テンプレート）に沿って、相手の Agent との会話をできるだけ続ける。Sonnet 5.5 と Opus 5.5 の二つを用意する。
+利用者役になり、システムプロンプトに埋め込んだ台本（対話用テンプレート）に沿って、相手の Agent との会話をできるだけ続ける。Sonnet 5.5 と Opus 5.5 の二つを用意する。
 
 ## 細則
 
 - モデル
   - conversation-script-sonnet : claude-sonnet-5-5
   - conversation-script-opus : claude-opus-5-5
-- system_prompt に `{{template:名前}}` でテンプレートを埋め込む。既定は「台本サンプル」を埋め込む
+- system_prompt に `{{template:名前}}` で対話用テンプレートを埋め込む。既定は「台本サンプル」を埋め込む
 - 会話の最初に opening_message を利用者の発言として置く（LLM API は利用者の発言から始まる必要があるため）
 - 直近 context_chars 文字（既定 40000）までの会話を毎回送る。それより前の会話は送らず、要約もしない
 - max_tokens の既定は 1024
